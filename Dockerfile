@@ -60,6 +60,9 @@ RUN groupadd --system --gid 1000 rails && \
 COPY --from=build --chown=rails:rails /usr/local/bundle /usr/local/bundle
 COPY --from=build --chown=rails:rails /rails /rails
 
+RUN chown rails:rails /rails && \
+    mkdir -p /rails/storage /rails/log /rails/tmp/pids /rails/tmp/cache
+
 USER rails
 
 EXPOSE 3000
@@ -67,4 +70,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
   CMD curl -fs http://localhost:${PORT}/up || exit 1
 
-CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+CMD ["bin/start"]

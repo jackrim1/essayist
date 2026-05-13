@@ -32,13 +32,14 @@
             placeholder: "Author (optional)" %>
       </div>
 
-      <div class="space-y-1.5">
+      <div class="space-y-1.5" data-controller="file-picker">
         <%= f.label :original_file, "PDF File", class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
         <div class="relative rounded-lg border-2 border-dashed border-zinc-200 dark:border-zinc-700 px-6 py-10 text-center hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors">
           <%= f.file_field :original_file, accept: "application/pdf",
-              class: "absolute inset-0 w-full h-full opacity-0 cursor-pointer" %>
+              class: "absolute inset-0 w-full h-full opacity-0 cursor-pointer",
+              data: { file_picker_target: "input", action: "change->file-picker#fileSelected" } %>
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-zinc-300 dark:text-zinc-600 mb-3"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-          <p class="text-sm text-zinc-500">Drop a PDF or tap to browse</p>
+          <p class="text-sm text-zinc-500" data-file-picker-target="label">Drop a PDF or tap to browse</p>
         </div>
       </div>
 

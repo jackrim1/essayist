@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+bundle exec rails db:migrate
+bin/jobs start &
+exec bundle exec puma -C config/puma.rb

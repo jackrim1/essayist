@@ -51,7 +51,7 @@
       <p class="text-xs text-zinc-400 uppercase tracking-wider mb-3">Danger zone</p>
       <%= button_to essay_path(@essay), method: :delete,
           class: "text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors",
-          data: { turbo_confirm: "Delete "#{@essay.title}"? This cannot be undone." } do %>
+          data: { turbo_confirm: "Delete \"#{@essay.title}\"? This cannot be undone." } do %>
         Delete essay
       <% end %>
     </div>
