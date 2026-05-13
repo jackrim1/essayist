@@ -175,6 +175,8 @@ GEM
     minitest (6.0.6)
       drb (~> 2.0)
       prism (~> 1.5)
+    mocha (3.1.0)
+      ruby2_keywords (>= 0.0.5)
     msgpack (1.8.0)
     net-imap (0.6.4)
       date
@@ -312,6 +314,7 @@ GEM
     ruby-vips (2.3.0)
       ffi (~> 1.12)
       logger
+    ruby2_keywords (0.0.5)
     rubyzip (3.3.0)
     securerandom (0.4.1)
     selenium-webdriver (4.44.0)
@@ -402,6 +405,7 @@ DEPENDENCIES
   image_processing (~> 1.2)
   importmap-rails
   jbuilder
+  mocha
   pdftotext
   pg (~> 1.1)
   propshaft

@@ -14,67 +14,47 @@ class LlmFormatEssayJobTest < ActiveJob::TestCase
   end
 
   test "replaces content when LLM output passes quality gate" do
-    good_llm_html = '<p class="prose-page">' + ("word " * 100) + "</p>"
-    @essay.update_columns(content: '<p class="prose-page">' + ("word " * 100) + "</p>")
+    good_html = '<p class="prose-page">' + ("word " * 100) + "</p>"
+    @essay.update_columns(content: '<p class="prose-page">' + ("word " * 95) + "</p>")
+    attach_pdf
 
-    @essay.original_file.attach(
-      io: File.open(Rails.root.join("test/fixtures/files/friedman.pdf")),
-      filename: "friedman.pdf",
-      content_type: "application/pdf"
-    )
+    PdfExtractor.stubs(:llm_html).returns(good_html)
+    LlmFormatEssayJob.perform_now(@essay.id)
 
-    PdfExtractor.stub(:llm_html, ->(_path) { good_llm_html }) do
-      LlmFormatEssayJob.perform_now(@essay.id)
-    end
-
-    assert_equal good_llm_html, @essay.reload.content
+    assert_equal good_html, @essay.reload.content
   end
 
   test "keeps existing content when LLM output fails quality gate" do
     original = '<p class="prose-page">' + ("word " * 100) + "</p>"
     @essay.update_columns(content: original)
+    attach_pdf
 
-    @essay.original_file.attach(
-      io: File.open(Rails.root.join("test/fixtures/files/friedman.pdf")),
-      filename: "friedman.pdf",
-      content_type: "application/pdf"
-    )
-
-    # Return only 20 words — well below the 40% threshold
-    bad_llm_html = '<p class="prose-page">' + ("word " * 20) + "</p>"
-    PdfExtractor.stub(:llm_html, ->(_path) { bad_llm_html }) do
-      LlmFormatEssayJob.perform_now(@essay.id)
-    end
+    # 20 words is well below the 40% threshold of 100
+    PdfExtractor.stubs(:llm_html).returns('<p class="prose-page">' + ("word " * 20) + "</p>")
+    LlmFormatEssayJob.perform_now(@essay.id)
 
     assert_equal original, @essay.reload.content
   end
 
-  test "keeps existing content when LLM raises an error" do
+  test "keeps existing content and enqueues retry when LLM errors" do
     original = @essay.content
-    @essay.original_file.attach(
-      io: File.open(Rails.root.join("test/fixtures/files/friedman.pdf")),
-      filename: "friedman.pdf",
-      content_type: "application/pdf"
-    )
+    attach_pdf
 
-    PdfExtractor.stub(:llm_html, ->(_path) { raise "API error" }) do
-      assert_raises(RuntimeError) { LlmFormatEssayJob.perform_now(@essay.id) }
+    PdfExtractor.stubs(:llm_html).raises(RuntimeError)
+
+    # retry_on StandardError in ApplicationJob means the error triggers a retry
+    # rather than propagating — verify content is unchanged and retry is queued
+    assert_enqueued_jobs 1, only: LlmFormatEssayJob do
+      LlmFormatEssayJob.perform_now(@essay.id)
     end
-
     assert_equal original, @essay.reload.content
   end
 
   test "runs against real API and upgrades content" do
     skip "ANTHROPIC_API_KEY not set" unless ENV["ANTHROPIC_API_KEY"].present?
 
-    @essay.original_file.attach(
-      io: File.open(Rails.root.join("test/fixtures/files/friedman.pdf")),
-      filename: "friedman.pdf",
-      content_type: "application/pdf"
-    )
-    baseline = PdfExtractor.initial_html(
-      Rails.root.join("test/fixtures/files/friedman.pdf").to_s
-    )
+    attach_pdf
+    baseline = PdfExtractor.initial_html(Rails.root.join("test/fixtures/files/friedman.pdf").to_s)
     @essay.update_columns(content: baseline)
 
     LlmFormatEssayJob.perform_now(@essay.id)
@@ -83,5 +63,15 @@ class LlmFormatEssayJobTest < ActiveJob::TestCase
     assert @essay.content.present?
     assert_includes @essay.content, '<p class="prose-page">'
     assert @essay.word_count > 0
+  end
+
+  private
+
+  def attach_pdf
+    @essay.original_file.attach(
+      io: File.open(Rails.root.join("test/fixtures/files/friedman.pdf")),
+      filename: "friedman.pdf",
+      content_type: "application/pdf"
+    )
   end
 end

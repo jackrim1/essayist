@@ -50,39 +50,33 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
 
   # ── Upload / create flow ──────────────────────────────────────────────────
 
-  test "POST create without file creates essay and enqueues LLM job" do
+  test "POST create with PDF enqueues LlmFormatEssayJob" do
+    PdfExtractor.stubs(:initial_html).returns("")
+
     assert_enqueued_with(job: LlmFormatEssayJob) do
-      # Stub initial_html to avoid actual pdftotext in controller tests;
-      # the PdfExtractor tests cover that independently.
-      PdfExtractor.stub(:initial_html, "") do
-        post essays_path, params: { essay: {
-          title: "Test Essay",
-          original_file: fixture_file_upload("friedman.pdf", "application/pdf")
-        } }
-      end
+      post essays_path, params: { essay: {
+        title: "Test Essay",
+        original_file: fixture_file_upload("friedman.pdf", "application/pdf")
+      } }
     end
+
     assert_redirected_to essay_path(Essay.last)
   end
 
-  test "POST create sets initial content from pdftotext synchronously" do
+  test "POST create sets initial content from pdftotext before redirect" do
     heuristic_html = '<p class="prose-page">Initial content from pdftotext.</p>'
+    PdfExtractor.stubs(:initial_html).returns(heuristic_html)
+    PdfExtractor.stubs(:word_count).returns(5)
 
-    perform_enqueued_jobs do
-      PdfExtractor.stub(:initial_html, ->(_path) { heuristic_html }) do
-        PdfExtractor.stub(:llm_html, ->(_path) { raise "skip LLM" }) do
-          post essays_path, params: { essay: {
-            title: "Test Essay",
-            original_file: fixture_file_upload("friedman.pdf", "application/pdf")
-          } }
-        end
-      end
-    end
+    post essays_path, params: { essay: {
+      title: "Test Essay",
+      original_file: fixture_file_upload("friedman.pdf", "application/pdf")
+    } }
 
-    essay = Essay.last
-    assert_equal heuristic_html, essay.content
+    assert_equal heuristic_html, Essay.last.content
   end
 
-  test "POST create without file attachment skips extraction" do
+  test "POST create without file attachment does not enqueue LLM job" do
     assert_no_enqueued_jobs(only: LlmFormatEssayJob) do
       post essays_path, params: { essay: { title: "No File Essay" } }
     end
