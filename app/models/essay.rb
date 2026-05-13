@@ -10,9 +10,6 @@ class Essay < ApplicationRecord
 
   scope :recent, -> { order(updated_at: :desc) }
 
-  # After upload, kick off text extraction as a background job
-  after_create_commit :extract_text_later, if: -> { original_file.attached? }
-
   def reading_percent
     (last_read_position * 100).round
   end
@@ -22,9 +19,4 @@ class Essay < ApplicationRecord
     (word_count / 200.0).ceil
   end
 
-  private
-
-  def extract_text_later
-    ExtractEssayTextJob.perform_later(id)
-  end
 end

@@ -1,16 +1,17 @@
 require "base64"
 
-# Extracts text from a PDF and converts it to semantic HTML paragraphs.
+# Two-phase PDF text extraction.
 #
-# Strategy:
-#   1. pdftotext — fast, free, gets the raw text layer
-#   2. Claude format — send the raw text to Claude to clean paragraph breaks,
-#      rejoin soft-wrapped lines, and strip headers/footers
-#   3. Claude OCR (fallback) — for image-only PDFs with no text layer,
-#      send the PDF bytes directly to Claude's document vision API
-#   4. pdftotext heuristics (last resort) — regex-based paragraph reconstruction
+# Phase 1 (sync, fast): pdftotext → heuristic HTML paragraph reconstruction.
+#   Call PdfExtractor.initial_html(file_path) right after upload so the user
+#   sees content immediately. Returns "" for image-only PDFs.
+#
+# Phase 2 (async, API): Claude reformats the text, or OCRs image-only PDFs.
+#   Call PdfExtractor.llm_html(file_path). Then use looks_good? to decide
+#   whether to replace the Phase 1 content.
 class PdfExtractor
   MODEL = "claude-sonnet-4-6"
+  MIN_TEXT_LENGTH = 200
 
   FORMAT_PROMPT = <<~PROMPT
     The text below was extracted from a PDF using pdftotext. Clean it up and reformat it as HTML paragraphs.
@@ -37,39 +38,55 @@ class PdfExtractor
   PROMPT
 
   PAGE_NUMBER = /\A\s*\d+\s*\z/
-  MIN_TEXT_LENGTH = 200
 
-  def self.call(file_path)
-    new(file_path).extract
+  # ── Public phase-1 API ───────────────────────────────────────────────────
+
+  # Fast sync path: pdftotext + heuristic paragraph reconstruction.
+  # Returns empty string for image-only PDFs (no text layer).
+  def self.initial_html(file_path)
+    raw = raw_text(file_path)
+    return "" if raw.length < MIN_TEXT_LENGTH
+
+    heuristic_html(raw)
   end
 
-  def initialize(file_path)
-    @file_path = file_path
-  end
+  # ── Public phase-2 API ───────────────────────────────────────────────────
 
-  def extract
-    raw = pdftotext_raw
-
+  # Slow async path: Claude cleans up a text-layer PDF, or OCRs an image PDF.
+  # Raises on API failure — caller should handle and keep Phase 1 content.
+  def self.llm_html(file_path)
+    raw = raw_text(file_path)
     if raw.length >= MIN_TEXT_LENGTH
-      claude_format(raw)
+      new(file_path).send(:claude_format, raw)
     else
-      Rails.logger.info "[PdfExtractor] No text layer found, using Claude OCR"
-      claude_ocr
+      new(file_path).send(:claude_ocr)
     end
-  rescue => e
-    Rails.logger.warn "[PdfExtractor] Claude failed (#{e.class}: #{e.message}), falling back to heuristic extraction"
-    pdftotext_heuristic(pdftotext_raw)
   end
 
-  private
+  # Quality gate: is +llm_html+ a trustworthy replacement for +baseline_html+?
+  # Rejects empty output, missing paragraph tags, and severe length divergence.
+  def self.looks_good?(llm_html, baseline_html)
+    return false if llm_html.blank?
+    return false unless llm_html.include?("<p")
 
-  # ── pdftotext ────────────────────────────────────────────────────────────
+    # If we have a baseline, word-count must be within a reasonable band.
+    # LLM can be shorter (removes headers/footers) but shouldn't be half the
+    # length or double it.
+    if baseline_html.present?
+      llm_words      = word_count(llm_html)
+      baseline_words = word_count(baseline_html)
+      return false if baseline_words > 0 && llm_words < baseline_words * 0.4
+      return false if baseline_words > 0 && llm_words > baseline_words * 2.0
+    end
 
-  def pdftotext_raw
-    require "tempfile"
+    true
+  end
+
+  # ── Shared helpers ───────────────────────────────────────────────────────
+
+  def self.raw_text(file_path)
     require "pdftotext"
-
-    pages = Pdftotext.pages(@file_path, layout: false, nopgbrk: true)
+    pages = Pdftotext.pages(file_path, layout: false, nopgbrk: true)
     return "" if pages.empty?
 
     pages.map(&:text).join("\n\n")
@@ -77,46 +94,56 @@ class PdfExtractor
     ""
   end
 
-  # ── Claude: format raw text (primary path for text-layer PDFs) ───────────
+  def self.heuristic_html(raw)
+    new(nil).send(:pdftotext_heuristic, raw)
+  end
+
+  def self.word_count(html)
+    html.gsub(/<[^>]+>/, "").split.size
+  end
+
+  # ── Legacy class-method entry point (kept for tests) ─────────────────────
+
+  def self.call(file_path)
+    llm_html(file_path)
+  rescue => e
+    Rails.logger.warn "[PdfExtractor] Claude failed (#{e.class}: #{e.message}), falling back to heuristic"
+    initial_html(file_path)
+  end
+
+  # ── Instance (private detail) ────────────────────────────────────────────
+
+  def initialize(file_path)
+    @file_path = file_path
+  end
+
+  private
 
   def claude_format(raw_text)
     response = claude_client.messages.create(
       model: MODEL,
       max_tokens: 8192,
-      messages: [{
-        role: "user",
-        content: FORMAT_PROMPT + raw_text
-      }]
+      messages: [{ role: "user", content: FORMAT_PROMPT + raw_text }]
     )
-
     html = response.content.first.text.strip
     validate_html!(html)
-    html
   end
-
-  # ── Claude: OCR via document vision (fallback for image-only PDFs) ───────
 
   def claude_ocr
     pdf_b64 = Base64.strict_encode64(File.binread(@file_path))
-
     response = claude_client.messages.create(
       model: MODEL,
       max_tokens: 8192,
       messages: [{
         role: "user",
         content: [
-          {
-            type: "document",
-            source: { type: "base64", media_type: "application/pdf", data: pdf_b64 }
-          },
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf_b64 } },
           { type: "text", text: OCR_PROMPT }
         ]
       }]
     )
-
     html = response.content.first.text.strip
     validate_html!(html)
-    html
   end
 
   def claude_client
@@ -128,8 +155,6 @@ class PdfExtractor
     raise "Response missing paragraph tags" unless html.include?("<p")
     html
   end
-
-  # ── Heuristic fallback (last resort) ─────────────────────────────────────
 
   def pdftotext_heuristic(raw)
     paragraphs = reconstruct_paragraphs(raw)

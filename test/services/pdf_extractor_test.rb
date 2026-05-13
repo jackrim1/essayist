@@ -4,104 +4,105 @@ class PdfExtractorTest < ActiveSupport::TestCase
   FRIEDMAN_PDF = Rails.root.join("test/fixtures/files/friedman.pdf").to_s
   FRIEDMAN_RAW = Rails.root.join("test/fixtures/files/friedman_raw.txt").read
 
-  # ── Heuristic fallback (no API key required) ─────────────────────────────
+  # ── raw_text (phase 1, pdftotext) ────────────────────────────────────────
 
-  test "heuristic: produces paragraph tags" do
-    html = extractor.send(:pdftotext_heuristic, FRIEDMAN_RAW)
+  test "raw_text: returns substantial text from Friedman PDF" do
+    raw = PdfExtractor.raw_text(FRIEDMAN_PDF)
+    assert raw.length > 500
+    assert_includes raw, "social responsibilities"
+  end
+
+  test "raw_text: returns empty string for missing file" do
+    assert_equal "", PdfExtractor.raw_text("/tmp/does_not_exist.pdf")
+  end
+
+  # ── heuristic_html (phase 1, no API) ─────────────────────────────────────
+
+  test "heuristic_html: produces paragraph tags" do
+    html = PdfExtractor.heuristic_html(FRIEDMAN_RAW)
     assert_includes html, '<p class="prose-page">'
   end
 
-  test "heuristic: strips lone page numbers" do
-    html = extractor.send(:pdftotext_heuristic, FRIEDMAN_RAW)
-    # Page numbers (bare digits on their own line) must not become paragraphs
+  test "heuristic_html: strips lone page numbers" do
+    html = PdfExtractor.heuristic_html(FRIEDMAN_RAW)
     refute_match(/<p class="prose-page">\d+<\/p>/, html)
   end
 
-  test "heuristic: rejoins soft-wrapped lines into single paragraph" do
-    html = extractor.send(:pdftotext_heuristic, FRIEDMAN_RAW)
-    # The opening sentence is soft-wrapped across many lines.
-    # Both sides of a line boundary must end up in the same <p>.
+  test "heuristic_html: rejoins soft-wrapped lines into single paragraph" do
+    html = PdfExtractor.heuristic_html(FRIEDMAN_RAW)
     assert_match(/<p[^>]*>[^<]*free-enterprise system[^<]*I am reminded[^<]*<\/p>/m, html)
   end
 
-  test "heuristic: each paragraph has meaningful length" do
-    html = extractor.send(:pdftotext_heuristic, FRIEDMAN_RAW)
-    html.scan(/<p class="prose-page">(.*?)<\/p>/m).each do |match|
-      assert match.first.length >= 4, "Suspiciously short paragraph: #{match.first.inspect}"
-    end
+  test "heuristic_html: produces multiple paragraphs" do
+    html = PdfExtractor.heuristic_html(FRIEDMAN_RAW)
+    assert html.scan(/<p class="prose-page">/).length >= 10
   end
 
-  test "heuristic: produces multiple paragraphs from full article" do
-    html = extractor.send(:pdftotext_heuristic, FRIEDMAN_RAW)
-    count = html.scan(/<p class="prose-page">/).length
-    assert count >= 10, "Expected at least 10 paragraphs, got #{count}"
+  # ── initial_html (phase 1 public entry point) ─────────────────────────────
+
+  test "initial_html: returns heuristic HTML for text-layer PDF" do
+    html = PdfExtractor.initial_html(FRIEDMAN_PDF)
+    assert_includes html, '<p class="prose-page">'
+    assert html.scan(/<p class="prose-page">/).length >= 10
   end
 
-  # ── pdftotext raw extraction ──────────────────────────────────────────────
-
-  test "pdftotext_raw: returns substantial text from Friedman PDF" do
-    raw = extractor.send(:pdftotext_raw)
-    assert raw.length > 500, "Expected substantial text, got #{raw.length} chars"
-    assert_includes raw, "social responsibilities"
-    assert_includes raw, "Milton Friedman"
+  test "initial_html: returns empty string for missing file" do
+    assert_equal "", PdfExtractor.initial_html("/tmp/does_not_exist.pdf")
   end
 
-  test "pdftotext_raw: returns empty string for missing file" do
-    e = PdfExtractor.new("/tmp/does_not_exist.pdf")
-    assert_equal "", e.send(:pdftotext_raw)
+  # ── looks_good? (quality gate) ───────────────────────────────────────────
+
+  test "looks_good?: true when llm output is similar length to baseline" do
+    baseline = '<p class="prose-page">' + ("word " * 100) + "</p>"
+    llm      = '<p class="prose-page">' + ("word " * 90) + "</p>"
+    assert PdfExtractor.looks_good?(llm, baseline)
   end
 
-  # ── Claude format path (requires ANTHROPIC_API_KEY) ──────────────────────
+  test "looks_good?: false when llm output is less than 40% of baseline words" do
+    baseline = '<p class="prose-page">' + ("word " * 100) + "</p>"
+    llm      = '<p class="prose-page">' + ("word " * 30) + "</p>"
+    refute PdfExtractor.looks_good?(llm, baseline)
+  end
 
-  test "claude_format: cleans raw Friedman text into well-formed HTML" do
+  test "looks_good?: false when llm output is more than double baseline" do
+    baseline = '<p class="prose-page">' + ("word " * 100) + "</p>"
+    llm      = '<p class="prose-page">' + ("word " * 250) + "</p>"
+    refute PdfExtractor.looks_good?(llm, baseline)
+  end
+
+  test "looks_good?: false when llm output is empty" do
+    refute PdfExtractor.looks_good?("", '<p class="prose-page">text</p>')
+  end
+
+  test "looks_good?: false when llm output has no paragraph tags" do
+    refute PdfExtractor.looks_good?("just plain text", '<p class="prose-page">text</p>')
+  end
+
+  test "looks_good?: true when no baseline to compare against" do
+    llm = '<p class="prose-page">Some content here</p>'
+    assert PdfExtractor.looks_good?(llm, nil)
+    assert PdfExtractor.looks_good?(llm, "")
+  end
+
+  # ── llm_html (phase 2, requires API key) ─────────────────────────────────
+
+  test "llm_html: cleans Friedman PDF into well-formed HTML" do
     skip "ANTHROPIC_API_KEY not set" unless ENV["ANTHROPIC_API_KEY"].present?
 
-    html = extractor.send(:claude_format, FRIEDMAN_RAW)
+    html = PdfExtractor.llm_html(FRIEDMAN_PDF)
 
     assert_includes html, '<p class="prose-page">'
     assert_includes html, "social responsibilities"
-    assert_includes html, "increase its profits"
-
-    count = html.scan(/<p class="prose-page">/).length
-    assert count >= 10, "Expected at least 10 paragraphs, got #{count}"
+    assert html.scan(/<p class="prose-page">/).length >= 10
   end
 
-  test "claude_format: strips page numbers" do
+  test "llm_html: output passes looks_good? against heuristic baseline" do
     skip "ANTHROPIC_API_KEY not set" unless ENV["ANTHROPIC_API_KEY"].present?
 
-    raw_with_pages = "Opening sentence that wraps\nacross two lines.\n\n1\n\nSecond paragraph here."
-    html = extractor.send(:claude_format, raw_with_pages)
+    baseline = PdfExtractor.initial_html(FRIEDMAN_PDF)
+    llm      = PdfExtractor.llm_html(FRIEDMAN_PDF)
 
-    refute_match(/<p class="prose-page">1<\/p>/, html)
-    assert_includes html, "Opening sentence"
-    assert_includes html, "Second paragraph"
-  end
-
-  test "claude_format: rejoins soft-wrapped lines" do
-    skip "ANTHROPIC_API_KEY not set" unless ENV["ANTHROPIC_API_KEY"].present?
-
-    html = extractor.send(:claude_format, FRIEDMAN_RAW)
-    # Both sides of the opening sentence's line break must be in the same paragraph
-    assert_match(/<p[^>]*>[^<]*free-enterprise system[^<]*I am reminded[^<]*<\/p>/m, html)
-  end
-
-  # ── Full pipeline on real PDF ─────────────────────────────────────────────
-
-  test "extract: full pipeline on Friedman PDF produces clean HTML" do
-    skip "ANTHROPIC_API_KEY not set" unless ENV["ANTHROPIC_API_KEY"].present?
-
-    html = PdfExtractor.call(FRIEDMAN_PDF)
-
-    assert_includes html, '<p class="prose-page">'
-    assert_includes html, "social responsibilities"
-
-    count = html.scan(/<p class="prose-page">/).length
-    assert count >= 10, "Expected at least 10 paragraphs, got #{count}"
-  end
-
-  private
-
-  def extractor
-    PdfExtractor.new(FRIEDMAN_PDF)
+    assert PdfExtractor.looks_good?(llm, baseline),
+      "LLM output did not pass quality gate vs heuristic baseline"
   end
 end

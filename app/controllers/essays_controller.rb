@@ -17,7 +17,8 @@ class EssaysController < ApplicationController
     @essay = current_user.essays.build(essay_params)
 
     if @essay.save
-      redirect_to @essay, notice: "Essay uploaded — extracting text in the background."
+      extract_text_now_then_enqueue_llm
+      redirect_to @essay, notice: "Essay uploaded."
     else
       render :new, status: :unprocessable_entity
     end
@@ -46,5 +47,19 @@ class EssaysController < ApplicationController
 
   def essay_params
     params.require(:essay).permit(:title, :author, :view_mode, :original_file)
+  end
+
+  def extract_text_now_then_enqueue_llm
+    return unless @essay.original_file.attached?
+
+    @essay.original_file.open do |file|
+      html = PdfExtractor.initial_html(file.path)
+      if html.present?
+        words = PdfExtractor.word_count(html)
+        @essay.update_columns(content: html, word_count: words)
+      end
+    end
+
+    LlmFormatEssayJob.perform_later(@essay.id)
   end
 end
