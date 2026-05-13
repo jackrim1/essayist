@@ -1,0 +1,37 @@
+service: essayist
+image:  your-dockerhub-user/essayist
+
+servers:
+  web:
+    - 192.168.1.1  # replace with your server IP
+
+proxy:
+  ssl: true
+  host: essayist.yourdomain.com
+
+registry:
+  username: your-dockerhub-user
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+env:
+  clear:
+    RAILS_ENV:             production
+    RAILS_LOG_TO_STDOUT:   "1"
+    RAILS_SERVE_STATIC_FILES: "1"
+    WEB_CONCURRENCY:       "2"
+  secret:
+    - RAILS_MASTER_KEY
+    - DATABASE_URL
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - S3_BUCKET
+    - S3_ENDPOINT
+
+volumes:
+  - "essayist_storage:/app/storage"
+
+asset_path: /app/public/assets
+
+builder:
+  arch: amd64

@@ -1,0 +1,14 @@
+.bundle/
+log/*.log
+/tmp/
+/storage/
+/public/assets/
+/public/packs/
+node_modules/
+.env
+.env.*
+!.env.example
+config/master.key
+config/credentials/*.key
+*.swp
+.DS_Store

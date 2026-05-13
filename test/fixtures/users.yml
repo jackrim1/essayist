@@ -1,0 +1,4 @@
+one:
+  email: "reader@example.com"
+  encrypted_password: "$2a$04$jhpXTWxA81vEA0V7tsjWKeWBhr94VgfjiY984ba2MRBuSrXP95RPK"
+  preferences: {}

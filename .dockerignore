@@ -1,0 +1,13 @@
+.git
+.gitignore
+log/*
+tmp/*
+storage/*
+node_modules
+.DS_Store
+spec
+test
+*.md
+Dockerfile*
+docker-compose*
+.env*

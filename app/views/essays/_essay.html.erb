@@ -1,0 +1,28 @@
+<li id="<%= dom_id(essay) %>"
+    class="group flex items-center justify-between px-3 py-3.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+  <%= link_to essay_path(essay), class: "flex-1 min-w-0" do %>
+    <p class="font-medium truncate"><%= essay.title %></p>
+    <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+      <% if essay.author.present? %><span><%= essay.author %></span> · <% end %>
+      <% if essay.estimated_minutes %>
+        <%= essay.estimated_minutes %> min read
+        <% if essay.reading_percent > 0 %> · <%= essay.reading_percent %>% read<% end %>
+      <% end %>
+    </p>
+  <% end %>
+
+  <!-- Progress ring indicator -->
+  <% if essay.reading_percent > 0 %>
+    <div class="ml-4 shrink-0">
+      <svg class="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor"
+                class="text-zinc-200 dark:text-zinc-800" stroke-width="3"/>
+        <circle cx="16" cy="16" r="12" fill="none" stroke="currentColor"
+                class="text-zinc-900 dark:text-zinc-100"
+                stroke-width="3"
+                stroke-dasharray="<%= (75.4 * essay.last_read_position).round(1) %> 75.4"
+                stroke-linecap="round"/>
+      </svg>
+    </div>
+  <% end %>
+</li>

@@ -1,0 +1,30 @@
+/*
+ * Custom styles for Essayist — loaded alongside the Tailwind build.
+ */
+
+/* Paged view mode — CSS scroll snap (targets content element when snap classes are active) */
+[data-reader-settings-target="content"].snap-y {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  height: 100dvh;
+}
+
+[data-reader-settings-target="content"].snap-y .prose-page {
+  scroll-snap-align: start;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+/* Safe area inset for notched phones */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+/* Highlighted text colours in the reader */
+.highlight-yellow { background-color: rgb(253 224 71 / 0.4); }
+.highlight-green  { background-color: rgb(134 239 172 / 0.4); }
+.highlight-blue   { background-color: rgb(147 197 253 / 0.4); }
+.highlight-pink   { background-color: rgb(249 168 212 / 0.4); }
+.highlight-purple { background-color: rgb(196 181 253 / 0.4); }

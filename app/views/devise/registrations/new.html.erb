@@ -1,0 +1,49 @@
+<% content_for :title, "Create account" %>
+
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold tracking-tight">Essayist</h1>
+      <p class="mt-1 text-sm text-zinc-500">Create your reading account</p>
+    </div>
+
+    <%= form_for(resource, as: resource_name, url: registration_path(resource_name),
+        class: "space-y-4") do |f| %>
+
+      <% if resource.errors.any? %>
+        <div class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+          <%= resource.errors.full_messages.to_sentence %>
+        </div>
+      <% end %>
+
+      <div class="space-y-1">
+        <%= f.label :email, class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
+        <%= f.email_field :email, autofocus: true, autocomplete: "email",
+            class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow",
+            placeholder: "you@example.com" %>
+      </div>
+
+      <div class="space-y-1">
+        <%= f.label :password, class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
+        <%= f.password_field :password, autocomplete: "new-password",
+            class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow",
+            placeholder: "8+ characters" %>
+      </div>
+
+      <div class="space-y-1">
+        <%= f.label :password_confirmation, "Confirm password",
+            class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
+        <%= f.password_field :password_confirmation, autocomplete: "new-password",
+            class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow",
+            placeholder: "••••••••" %>
+      </div>
+
+      <%= f.submit "Create account",
+          class: "w-full py-2.5 rounded-xl font-medium text-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer" %>
+    <% end %>
+
+    <div class="mt-6 flex flex-col items-center gap-2">
+      <%= render "devise/shared/links" %>
+    </div>
+  </div>
+</div>

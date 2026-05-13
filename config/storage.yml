@@ -1,0 +1,17 @@
+test:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage") %>
+
+local:
+  service: Disk
+  root: <%= Rails.root.join("storage") %>
+
+# S3-compatible (Tigris, Cloudflare R2, AWS S3)
+amazon:
+  service: S3
+  access_key_id:     <%= ENV["AWS_ACCESS_KEY_ID"] %>
+  secret_access_key: <%= ENV["AWS_SECRET_ACCESS_KEY"] %>
+  region:            <%= ENV.fetch("AWS_REGION", "auto") %>
+  bucket:            <%= ENV["S3_BUCKET"] %>
+  endpoint:          <%= ENV["S3_ENDPOINT"] %>   # set for R2/Tigris
+  force_path_style:  false

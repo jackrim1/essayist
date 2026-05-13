@@ -1,0 +1,26 @@
+<% color_bg = {
+  "yellow" => "bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-700",
+  "green"  => "bg-green-50  border-green-200  dark:bg-green-900/20  dark:border-green-700",
+  "blue"   => "bg-blue-50   border-blue-200   dark:bg-blue-900/20   dark:border-blue-700",
+  "pink"   => "bg-pink-50   border-pink-200   dark:bg-pink-900/20   dark:border-pink-700",
+  "purple" => "bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-700",
+}[highlight.color] || "bg-zinc-50 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-700" %>
+
+<li id="highlight_<%= highlight.id %>" class="group rounded-lg border p-3 <%= color_bg %>">
+  <p class="text-sm leading-relaxed"><%= highlight.content %></p>
+  <% if highlight.tags.any? %>
+    <div class="mt-2 flex flex-wrap gap-1">
+      <% highlight.tags.each do |tag| %>
+        <span class="text-xs px-1.5 py-0.5 rounded-md bg-white/60 dark:bg-zinc-800/60 text-zinc-500">
+          <%= tag.name %>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+  <%= button_to essay_highlight_path(highlight.essay, highlight),
+      method: :delete,
+      class:  "mt-2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity",
+      data:   { turbo_confirm: "Remove this highlight?" } do %>
+    Remove
+  <% end %>
+</li>

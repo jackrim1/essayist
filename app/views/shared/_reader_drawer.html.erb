@@ -1,0 +1,61 @@
+<%# Scrim: full-screen, fades in/out, tap to dismiss %>
+<div class="fixed inset-0 z-30 bg-black/40 opacity-0 pointer-events-none transition-opacity duration-300"
+     data-reader-settings-target="scrim"
+     data-action="click->reader-settings#closeDrawer"></div>
+
+<%# Panel: compact sheet anchored to bottom, slides up on open %>
+<div class="fixed bottom-0 left-0 right-0 z-40 translate-y-full transition-transform duration-300 ease-out"
+     data-reader-settings-target="drawer">
+  <div class="flex flex-col bg-white dark:bg-zinc-900 rounded-t-2xl px-5 pt-4 pb-safe shadow-2xl max-w-2xl mx-auto">
+
+    <!-- Handle -->
+    <div class="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 mx-auto mb-5"></div>
+
+    <h3 class="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-4">Reader Settings</h3>
+
+    <!-- Font size -->
+    <div class="flex items-center justify-between mb-5">
+      <span class="text-sm text-zinc-600 dark:text-zinc-400">Text size</span>
+      <div class="flex items-center gap-2">
+        <button data-action="reader-settings#decreaseFontSize"
+                class="w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+        </button>
+        <span class="text-sm w-6 text-center text-zinc-500" id="font-label">A</span>
+        <button data-action="reader-settings#increaseFontSize"
+                class="w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- View mode -->
+    <div class="flex items-center justify-between mb-5">
+      <span class="text-sm text-zinc-600 dark:text-zinc-400">View mode</span>
+      <div class="inline-flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm">
+        <button data-action="reader-settings#setViewMode" data-mode="infinite"
+                class="px-3 py-1.5 rounded-l-lg border-r border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+          Scroll
+        </button>
+        <button data-action="reader-settings#setViewMode" data-mode="paged"
+                class="px-3 py-1.5 rounded-r-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+          Paged
+        </button>
+      </div>
+    </div>
+
+    <!-- Appearance -->
+    <div class="flex items-center justify-between pb-4">
+      <span class="text-sm text-zinc-600 dark:text-zinc-400">Appearance</span>
+      <button data-action="dark-mode#toggle"
+              class="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+        Toggle dark mode
+      </button>
+    </div>
+
+    <button data-action="reader-settings#closeDrawer"
+            class="w-full mt-2 py-2.5 rounded-xl text-sm font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+      Done
+    </button>
+  </div>
+</div>

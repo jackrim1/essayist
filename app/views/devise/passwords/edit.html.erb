@@ -1,0 +1,37 @@
+<% content_for :title, "New password" %>
+
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold tracking-tight">New password</h1>
+    </div>
+
+    <%= form_for(resource, as: resource_name, url: password_path(resource_name),
+        html: { method: :put }, class: "space-y-4") do |f| %>
+
+      <%= f.hidden_field :reset_password_token %>
+
+      <% if resource.errors.any? %>
+        <div class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+          <%= resource.errors.full_messages.to_sentence %>
+        </div>
+      <% end %>
+
+      <div class="space-y-1">
+        <%= f.label :password, "New password", class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
+        <%= f.password_field :password, autofocus: true, autocomplete: "new-password",
+            class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow",
+            placeholder: "8+ characters" %>
+      </div>
+
+      <div class="space-y-1">
+        <%= f.label :password_confirmation, "Confirm new password", class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
+        <%= f.password_field :password_confirmation, autocomplete: "new-password",
+            class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-shadow" %>
+      </div>
+
+      <%= f.submit "Update password",
+          class: "w-full py-2.5 rounded-xl font-medium text-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer" %>
+    <% end %>
+  </div>
+</div>
