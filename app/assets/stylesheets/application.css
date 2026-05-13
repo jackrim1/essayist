@@ -22,6 +22,11 @@
   padding-bottom: env(safe-area-inset-bottom, 1rem);
 }
 
+/* Paragraph spacing in the reader */
+.prose-page {
+  margin-bottom: 1.5em;
+}
+
 /* Highlighted text colours in the reader */
 .highlight-yellow { background-color: rgb(253 224 71 / 0.4); }
 .highlight-green  { background-color: rgb(134 239 172 / 0.4); }

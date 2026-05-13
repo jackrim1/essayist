@@ -22,11 +22,13 @@ gem "image_processing", "~> 1.2"
 # Auth
 gem "devise"
 
-# PDF text extraction
+# AI + PDF text extraction
+gem "anthropic"
 gem "pdftotext"
 
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
+  gem "dotenv-rails"
 end
 
 group :development do
