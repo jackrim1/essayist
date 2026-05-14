@@ -11,7 +11,7 @@ class HighlightsController < ApplicationController
         format.html { redirect_to @essay }
       end
     else
-      render turbo_stream: turbo_stream.replace(
+      render turbo_stream: turbo_stream.update(
         "highlight-toolbar",
         partial: "highlights/toolbar",
         locals:  { highlight: @highlight, essay: @essay }

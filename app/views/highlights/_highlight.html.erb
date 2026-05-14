@@ -8,18 +8,36 @@
 
 <li id="highlight_<%= highlight.id %>" class="group rounded-lg border p-3 <%= color_bg %>">
   <p class="text-sm leading-relaxed"><%= highlight.content %></p>
-  <% if highlight.tags.any? %>
-    <div class="mt-2 flex flex-wrap gap-1">
-      <% highlight.tags.each do |tag| %>
-        <span class="text-xs px-1.5 py-0.5 rounded-md bg-white/60 dark:bg-zinc-800/60 text-zinc-500">
-          <%= tag.name %>
-        </span>
+
+  <div class="mt-1.5"
+       data-controller="tag-input"
+       data-tag-input-highlight-id-value="<%= highlight.id %>"
+       data-tag-input-add-url-value="<%= highlight_highlight_tags_path(highlight) %>">
+
+    <div id="highlight_<%= highlight.id %>_tags" class="flex flex-wrap gap-1 items-center">
+      <% highlight.highlight_tags.includes(:tag).each do |ht| %>
+        <%= render "highlights/tag_chip", highlight: highlight, highlight_tag: ht %>
       <% end %>
     </div>
-  <% end %>
+
+    <div class="relative mt-1">
+      <input type="text"
+             data-tag-input-target="input"
+             data-action="input->tag-input#suggest keydown->tag-input#keydown focus->tag-input#open"
+             placeholder="+ tag"
+             autocomplete="off"
+             maxlength="40"
+             class="text-[10px] bg-transparent text-zinc-400 dark:text-zinc-500 placeholder-zinc-300 dark:placeholder-zinc-600 w-16 focus:outline-none focus:ring-0 focus:shadow-none"
+             style="border:none;outline:none;box-shadow:none">
+      <ul data-tag-input-target="dropdown"
+          class="absolute top-full left-0 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg z-50 hidden w-44 py-1">
+      </ul>
+    </div>
+  </div>
+
   <%= button_to essay_highlight_path(highlight.essay, highlight),
       method: :delete,
-      class:  "mt-2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity",
+      class:  "mt-2 text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity",
       data:   { turbo_confirm: "Remove this highlight?" } do %>
     Remove
   <% end %>

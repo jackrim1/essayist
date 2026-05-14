@@ -42,6 +42,7 @@
         data-scroll-position-position-value="<%= @essay.last_read_position %>"
         data-highlight-create-url-value="<%= essay_highlights_path(@essay) %>"
         data-highlight-essay-id-value="<%= @essay.id %>"
+        data-highlight-highlights-value="<%= @highlights.map { |h| { id: h.id, color: h.color, anchor: h.anchor } }.to_json %>"
         data-reader-settings-target="content">
 
     <% if @essay.content.present? %>
@@ -72,15 +73,16 @@
     </div>
   </main>
 
-  <!-- Existing highlights sidebar (mobile: below content) -->
-  <% if @highlights.any? %>
-    <aside class="max-w-2xl mx-auto w-full px-5 py-6 border-t border-zinc-100 dark:border-zinc-800">
-      <h2 class="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-4">Highlights</h2>
-      <ul id="highlights-list" class="space-y-3">
-        <%= render @highlights %>
-      </ul>
-    </aside>
-  <% end %>
+  <!-- Highlights sidebar — always rendered so turbo stream prepend has a target -->
+  <aside class="max-w-2xl mx-auto w-full px-5 py-6 border-t border-zinc-100 dark:border-zinc-800">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-4">Highlights</h2>
+    <ul id="highlights-list" class="space-y-3">
+      <%= render @highlights %>
+    </ul>
+    <% unless @highlights.any? %>
+      <p id="highlights-empty" class="text-sm text-zinc-400">Select text to save a highlight.</p>
+    <% end %>
+  </aside>
 
   <!-- Reader settings bottom drawer -->
   <%= render "shared/reader_drawer", essay: @essay %>

@@ -1,3 +1,4 @@
+<%= turbo_stream.remove "highlights-empty" %>
 <%= turbo_stream.prepend "highlights-list",
     partial: "highlights/highlight",
     locals:  { highlight: @highlight } %>

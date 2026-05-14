@@ -1,6 +1,7 @@
 <%# Floating selection toolbar rendered inside the highlight Stimulus controller %>
 <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl px-3 py-2.5 flex items-center gap-2">
   <%= form_with url: essay_highlights_path(essay),
+      scope: :highlight,
       data: { action: "submit->highlight#saveHighlight" } do |f| %>
 
     <%= f.hidden_field :content, data: { highlight_target: "selectedText" } %>
@@ -8,6 +9,8 @@
     <%= f.hidden_field :color,   value: "yellow", data: { highlight_target: "colorInput" } %>
 
     <!-- Color swatches -->
+    <%# touchend fires even after touchstart.preventDefault(), ensuring selection -->
+    <%# is preserved on iOS while the action still triggers on touch devices.    %>
     <% Highlight::COLORS.each do |color| %>
       <% swatch_classes = {
         "yellow" => "bg-yellow-300",
@@ -17,7 +20,7 @@
         "purple" => "bg-purple-300",
       }[color] %>
       <button type="button"
-              data-action="highlight#setColor"
+              data-action="click->highlight#setColor touchend->highlight#setColor"
               data-color="<%= color %>"
               class="w-5 h-5 rounded-full <%= swatch_classes %> ring-offset-1 ring-zinc-900 dark:ring-zinc-100 transition-all">
       </button>
@@ -25,7 +28,10 @@
 
     <div class="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1"></div>
 
-    <%= f.submit "Save",
+    <%# data-toolbar-submit exempts this button from the touchstart/mousedown guard %>
+    <%= f.button "Save",
+        type: "submit",
+        data: { toolbar_submit: true },
         class: "text-xs font-medium px-2.5 py-1 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer" %>
   <% end %>
 </div>

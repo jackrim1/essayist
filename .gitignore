@@ -12,3 +12,4 @@ config/master.key
 config/credentials/*.key
 *.swp
 .DS_Store
+.planning/

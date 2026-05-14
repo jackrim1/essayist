@@ -1,0 +1,9 @@
+<% if @created %>
+  <%= turbo_stream.append "highlight_#{@highlight.id}_tags",
+      partial: "highlights/tag_chip",
+      locals: { highlight: @highlight, highlight_tag: @highlight_tag } %>
+  <%# Only update the popover container if it's currently in the DOM (popover is open) %>
+  <%= turbo_stream.append "mark_tags_#{@highlight.id}",
+      partial: "highlights/mark_tag_chip",
+      locals: { highlight: @highlight, highlight_tag: @highlight_tag } %>
+<% end %>

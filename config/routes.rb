@@ -8,6 +8,12 @@ Rails.application.routes.draw do
     resources :highlights, only: %i[create destroy]
   end
 
+  resources :highlights, only: [] do
+    resources :highlight_tags, only: %i[create destroy], path: :tags
+  end
+
+  resources :tags, only: %i[index show], param: :name
+
   resource :preferences, only: [:update]
 
   get "up", to: "rails/health#show", as: :rails_health_check
