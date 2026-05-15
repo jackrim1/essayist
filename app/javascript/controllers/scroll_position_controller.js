@@ -1,62 +1,75 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Tracks reading progress: persists scroll position to the server and
-// restores it on page load. Throttled to avoid request floods.
 export default class extends Controller {
   static values = {
-    saveUrl:  String,   // PATCH /essays/:id/position
-    position: Number,   // 0.0–1.0 fractional scroll depth
+    saveUrl:  String,
+    position: Number,
   }
 
   connect() {
     this._restore()
-    this._scrollHandler = this._onScroll.bind(this)
+    this._scrollHandler  = this._onScroll.bind(this)
+    this._saveNowHandler = () => this._saveNow()
     this.element.addEventListener("scroll", this._scrollHandler, { passive: true })
+    document.addEventListener("visibilitychange", this._saveNowHandler)
+    window.addEventListener("pagehide", this._saveNowHandler)
   }
 
   disconnect() {
     this.element.removeEventListener("scroll", this._scrollHandler)
+    document.removeEventListener("visibilitychange", this._saveNowHandler)
+    window.removeEventListener("pagehide", this._saveNowHandler)
     clearTimeout(this._throttleTimer)
+    this._saveNow()
   }
 
   // ── Private ──────────────────────────────────────────────────────────────
 
+  // Retry scroll restore until layout has settled (scrollHeight > 0).
   _restore() {
     if (this.positionValue <= 0) return
-    requestAnimationFrame(() => {
+    const attempt = (tries = 0) => {
       const el = this.element
-      el.scrollTop = this.positionValue * (el.scrollHeight - el.clientHeight)
-    })
+      const scrollable = el.scrollHeight - el.clientHeight
+      if (scrollable > 0) {
+        el.scrollTop = this.positionValue * scrollable
+      } else if (tries < 20) {
+        requestAnimationFrame(() => attempt(tries + 1))
+      }
+    }
+    requestAnimationFrame(() => attempt())
   }
 
   _onScroll() {
     if (this._throttleTimer) return
-
-    // Throttle: fire at most once every 2 s while scrolling
     this._throttleTimer = setTimeout(() => {
       this._throttleTimer = null
-      this._save()
+      this._saveNow()
     }, 2000)
   }
 
-  _save() {
+  _saveNow() {
     const el = this.element
     const scrollable = el.scrollHeight - el.clientHeight
     if (scrollable <= 0) return
 
     const position = el.scrollTop / scrollable
-
-    // Also update the visual progress bar if present
     this._updateProgressBar(position)
+    this._persist(position)
+  }
 
-    // Fire-and-forget — we don't need the response
-    navigator.sendBeacon(
-      this.saveUrlValue,
-      new Blob(
-        [JSON.stringify({ position })],
-        { type: "application/json" }
-      )
-    )
+  // fetch + keepalive works during page unload; keepalive allows the request
+  // to complete even after the page starts navigating away.
+  _persist(position) {
+    fetch(this.saveUrlValue, {
+      method: "PATCH",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
+      },
+      body: JSON.stringify({ position }),
+    })
   }
 
   _updateProgressBar(position) {

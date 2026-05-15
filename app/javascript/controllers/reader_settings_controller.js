@@ -3,8 +3,6 @@ import { Controller } from "@hotwired/stimulus"
 const FONT_SIZES  = ["text-sm", "text-base", "text-lg", "text-xl", "text-2xl"]
 const STORAGE_KEY = "essayist:reader"
 
-// Controls font size and view mode. Settings persist to localStorage immediately
-// and are synced asynchronously to the server.
 export default class extends Controller {
   static values  = { syncUrl: String }
   static targets = ["content", "drawer", "scrim"]
@@ -26,13 +24,6 @@ export default class extends Controller {
   increaseFontSize() { this._stepFont(1) }
   decreaseFontSize() { this._stepFont(-1) }
 
-  setViewMode(event) {
-    const mode = event.currentTarget.dataset.mode  // "infinite" | "paged"
-    this._save({ view_mode: mode })
-    this._applyViewMode(mode)
-    this._syncServer()
-  }
-
   // ── Private ──────────────────────────────────────────────────────────────
 
   _stepFont(delta) {
@@ -46,25 +37,12 @@ export default class extends Controller {
 
   _apply(prefs) {
     this._applyFontSize(prefs.font_size || "text-base")
-    this._applyViewMode(prefs.view_mode || "infinite")
   }
 
   _applyFontSize(size) {
     if (!this.hasContentTarget) return
     FONT_SIZES.forEach(s => this.contentTarget.classList.remove(s))
     this.contentTarget.classList.add(size)
-  }
-
-  _applyViewMode(mode) {
-    if (!this.hasContentTarget) return
-    if (mode === "paged") {
-      this.contentTarget.classList.add("snap-y", "snap-mandatory", "overflow-y-scroll")
-      this.contentTarget.querySelectorAll(".prose-page").forEach(p =>
-        p.classList.add("snap-start", "min-h-screen")
-      )
-    } else {
-      this.contentTarget.classList.remove("snap-y", "snap-mandatory")
-    }
   }
 
   _load() {
