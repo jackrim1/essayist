@@ -13,7 +13,7 @@
       <% end %>
 
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium truncate"><%= @essay.title %></p>
+        <p class="text-sm font-medium truncate"><%= @essay.title.presence || "Untitled" %></p>
       </div>
 
       <%= link_to edit_essay_path(@essay),
@@ -48,7 +48,7 @@
     <% if @essay.content.present? %>
       <article class="max-w-2xl mx-auto px-5 py-10 prose prose-zinc dark:prose-invert prose-base leading-relaxed">
         <header class="not-prose mb-10">
-          <h1 class="text-2xl font-bold tracking-tight"><%= @essay.title %></h1>
+          <h1 class="text-2xl font-bold tracking-tight"><%= @essay.title.presence || "Untitled" %></h1>
           <% if @essay.author.present? %>
             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400"><%= @essay.author %></p>
           <% end %>

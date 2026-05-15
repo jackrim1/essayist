@@ -40,7 +40,8 @@ class UrlImporterTest < ActiveSupport::TestCase
 
     result = UrlImporter.call(PDF_URL)
 
-    assert_nil result.title
+    # URL slug fallback: "paper" → "Paper"
+    assert_equal "Paper", result.title
     assert_nil result.author
   end
 
@@ -83,9 +84,38 @@ class UrlImporterTest < ActiveSupport::TestCase
 
     result = UrlImporter.call(HTML_URL)
 
-    assert_nil result.title
+    # URL slug fallback: "essay" → "Essay"
+    assert_equal "Essay", result.title
     assert_nil result.author
     assert_includes result.content, "prose-page"
+  end
+
+  test "HTML metadata hints are passed to Claude prompt" do
+    html = <<~HTML
+      <html>
+        <head>
+          <title>Page Title</title>
+          <meta property="og:title" content="OG Title">
+          <meta name="author" content="Jane Smith">
+        </head>
+        <body><p>Content.</p></body>
+      </html>
+    HTML
+    stub_fetch(HTML_URL, html, "text/html", HTML_URL)
+
+    captured_prompt = nil
+    client_double   = mock
+    messages_double = mock
+    content_double  = mock(text: '<p class="prose-page">Content.</p>')
+    message_double  = mock(content: [ content_double ])
+    messages_double.stubs(:create).with { |args| captured_prompt = args[:messages].first[:content]; true }.returns(message_double)
+    client_double.stubs(:messages).returns(messages_double)
+    Anthropic::Client.stubs(:new).returns(client_double)
+
+    UrlImporter.call(HTML_URL)
+
+    assert_match(/og:title.*OG Title/i, captured_prompt)
+    assert_match(/meta author.*Jane Smith/i, captured_prompt)
   end
 
   test "raises when Claude returns blank content for HTML" do
@@ -94,6 +124,29 @@ class UrlImporterTest < ActiveSupport::TestCase
 
     err = assert_raises(RuntimeError) { UrlImporter.call(HTML_URL) }
     assert_match(/No essay content extracted/, err.message)
+  end
+
+  # ── URL title fallback ─────────────────────────────────────────────────────
+
+  test "derives title from URL slug when Claude finds none" do
+    stub_fetch("https://example.com/going-a-journey", "<html><body><p>Text.</p></body></html>", "text/html", "https://example.com/going-a-journey")
+    stub_claude('<p class="prose-page">Text.</p>')
+
+    result = UrlImporter.call("https://example.com/going-a-journey")
+
+    assert_equal "Going A Journey", result.title
+  end
+
+  test "derives title from underscore slug for PDF" do
+    url = "https://example.com/essays/going_a_journey.pdf"
+    stub_fetch(url, PDF_BYTES, "application/pdf", url)
+    PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Body.</p>')
+    PdfExtractor.stubs(:raw_text).returns("some text")
+    stub_claude_metadata(nil, nil)
+
+    result = UrlImporter.call(url)
+
+    assert_equal "Going A Journey", result.title
   end
 
   # ── URL validation ─────────────────────────────────────────────────────────

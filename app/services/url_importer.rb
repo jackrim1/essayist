@@ -19,17 +19,28 @@ class UrlImporter
     - Wrap each paragraph in: <p class="prose-page">...</p>
     - Remove navigation, sidebars, ads, author bios, comments, footers, and other non-essay boilerplate
     - Preserve the complete essay text — do not summarise or omit anything
-    - If you can identify the essay title, output it first as: <!-- title: Title Here -->
-    - If you can identify the author, output it next as: <!-- author: Author Name -->
+    - Output the essay title first as: <!-- title: Title Here -->
+      Use the most accurate title you can find. Prefer the essay's own title over the page/site title.
+      Clues to use (in order of preference): essay heading within the content, og:title/meta hints
+      provided below, <title> tag, or derive a sensible title from the content itself.
+    - Output the author next as: <!-- author: Author Name -->
+      Only include a name if you are confident; omit the line entirely if uncertain.
     - Then output only the <p> tags — no other HTML or commentary
 
+    %<hints>s
     HTML:
   PROMPT
 
   METADATA_PROMPT = <<~PROMPT
     From the text below (the opening of a document), identify the essay or article title and the author's name.
 
-    Output ONLY these two lines (write null if not found):
+    Strategy:
+    - The title is usually the first prominent line, often in ALL CAPS or title case, before the body text starts.
+    - The author often appears just below the title, sometimes prefixed with "by", "By", or "BY".
+    - If the title is not explicit, infer a short, accurate title from the subject matter.
+    - Write null only if you truly cannot determine the value.
+
+    Output ONLY these two lines:
     title: Title Here
     author: Author Name
 
@@ -52,7 +63,7 @@ class UrlImporter
     if pdf_content?(content_type, final_url)
       from_pdf(body, final_url)
     else
-      from_html(body)
+      from_html(body, final_url)
     end
   end
 
@@ -100,6 +111,7 @@ class UrlImporter
     end
 
     title, author = extract_metadata_from_text(raw_text)
+    title ||= title_from_url(url)
 
     Result.new(
       type:         :pdf,
@@ -111,12 +123,15 @@ class UrlImporter
     )
   end
 
-  def from_html(html_body)
+  def from_html(html_body, url = nil)
     utf8_body = html_body.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+    hints     = html_metadata_hints(utf8_body)
+    prompt    = format(HTML_PROMPT, hints: hints)
+
     response = claude_client.messages.create(
       model:      MODEL,
       max_tokens: 8192,
-      messages:   [ { role: "user", content: HTML_PROMPT + utf8_body } ]
+      messages:   [ { role: "user", content: prompt + utf8_body } ]
     )
     raw = response.content.first.text.strip
 
@@ -126,7 +141,27 @@ class UrlImporter
 
     raise "No essay content extracted from page" if content.blank?
 
+    title ||= title_from_url(url) if url
     Result.new(type: :html, content: content, title: title, author: author, pdf_io: nil, pdf_filename: nil)
+  end
+
+  # Pulls candidate title/author from HTML meta tags and headings to give Claude better signals.
+  def html_metadata_hints(html)
+    doc = Nokogiri::HTML(html)
+
+    candidates = {
+      "og:title"     => doc.at('meta[property="og:title"]')&.attr("content"),
+      "twitter:title" => doc.at('meta[name="twitter:title"]')&.attr("content"),
+      "<title> tag"  => doc.at("title")&.text&.strip,
+      "<h1>"         => doc.at("h1")&.text&.strip,
+      "og:author"    => doc.at('meta[property="article:author"]')&.attr("content"),
+      "meta author"  => doc.at('meta[name="author"]')&.attr("content"),
+    }.reject { |_, v| v.blank? }
+
+    return "" if candidates.empty?
+
+    lines = candidates.map { |k, v| "  #{k}: #{v}" }.join("\n")
+    "Metadata hints extracted from the page:\n#{lines}\n\n"
   end
 
   def extract_metadata_from_text(text)
@@ -135,7 +170,7 @@ class UrlImporter
     sample   = text.first(3000)
     response = claude_client.messages.create(
       model:      MODEL,
-      max_tokens: 100,
+      max_tokens: 150,
       messages:   [ { role: "user", content: METADATA_PROMPT + sample } ]
     )
     raw    = response.content.first.text.strip
@@ -144,6 +179,19 @@ class UrlImporter
     title  = nil if title.nil? || title.casecmp("null").zero?
     author = nil if author.nil? || author.casecmp("null").zero?
     [ title, author ]
+  end
+
+  # Derives a human-readable title from the URL path as a last resort.
+  # e.g. "going_a_jouney" → "Going a Journey", "some-thoughts-on-the-common-toad" → "Some Thoughts on the Common Toad"
+  def title_from_url(url)
+    path = URI.parse(url).path
+    slug = path.split("/").reject(&:empty?).last.to_s
+    slug = slug.sub(/\.[^.]+$/, "")   # strip extension
+    return nil if slug.blank?
+
+    slug.tr("-_", " ").split.map(&:capitalize).join(" ")
+  rescue URI::InvalidURIError
+    nil
   end
 
   def claude_client
