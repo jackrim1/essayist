@@ -1,5 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Tracks reading progress against window scroll (not an overflow element).
+// The essay layout uses min-h-screen so the outer div expands with content
+// and the window is what actually scrolls.
 export default class extends Controller {
   static values = {
     saveUrl:  String,
@@ -7,32 +10,37 @@ export default class extends Controller {
   }
 
   connect() {
-    this._restore()
+    // Take over scroll restoration so Turbo/browser don't fight our restore.
+    history.scrollRestoration = "manual"
+
     this._scrollHandler  = this._onScroll.bind(this)
     this._saveNowHandler = () => this._saveNow()
-    this.element.addEventListener("scroll", this._scrollHandler, { passive: true })
+
+    window.addEventListener("scroll", this._scrollHandler, { passive: true })
     document.addEventListener("visibilitychange", this._saveNowHandler)
     window.addEventListener("pagehide", this._saveNowHandler)
+
+    this._restore()
   }
 
   disconnect() {
-    this.element.removeEventListener("scroll", this._scrollHandler)
+    window.removeEventListener("scroll", this._scrollHandler)
     document.removeEventListener("visibilitychange", this._saveNowHandler)
     window.removeEventListener("pagehide", this._saveNowHandler)
     clearTimeout(this._throttleTimer)
     this._saveNow()
+    history.scrollRestoration = "auto"
   }
 
   // ── Private ──────────────────────────────────────────────────────────────
 
-  // Retry scroll restore until layout has settled (scrollHeight > 0).
+  // Retry until page has rendered enough content to have a scrollable range.
   _restore() {
     if (this.positionValue <= 0) return
     const attempt = (tries = 0) => {
-      const el = this.element
-      const scrollable = el.scrollHeight - el.clientHeight
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight
       if (scrollable > 0) {
-        el.scrollTop = this.positionValue * scrollable
+        window.scrollTo({ top: this.positionValue * scrollable, behavior: "instant" })
       } else if (tries < 20) {
         requestAnimationFrame(() => attempt(tries + 1))
       }
@@ -49,17 +57,14 @@ export default class extends Controller {
   }
 
   _saveNow() {
-    const el = this.element
-    const scrollable = el.scrollHeight - el.clientHeight
+    const scrollable = document.documentElement.scrollHeight - window.innerHeight
     if (scrollable <= 0) return
 
-    const position = el.scrollTop / scrollable
+    const position = Math.min(window.scrollY / scrollable, 1)
     this._updateProgressBar(position)
     this._persist(position)
   }
 
-  // fetch + keepalive works during page unload; keepalive allows the request
-  // to complete even after the page starts navigating away.
   _persist(position) {
     fetch(this.saveUrlValue, {
       method: "PATCH",
