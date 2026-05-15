@@ -15,8 +15,9 @@ class ImportEssayFromUrlJob < ApplicationJob
 
     attrs = {}
     if result.content.present?
-      attrs[:content]    = result.content
-      attrs[:word_count] = PdfExtractor.word_count(result.content)
+      attrs[:content]         = result.content
+      attrs[:word_count]      = PdfExtractor.word_count(result.content)
+      attrs[:content_simhash] = DuplicateDetector.simhash(result.content)
     end
     attrs[:title]  = result.title  if result.title.present?  && essay.title.blank?
     attrs[:author] = result.author if result.author.present? && essay.author.blank?

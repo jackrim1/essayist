@@ -45,6 +45,18 @@
         data-highlight-highlights-value="<%= @highlights.map { |h| { id: h.id, color: h.color, anchor: h.anchor } }.to_json %>"
         data-reader-settings-target="content">
 
+    <% if @duplicates.any? %>
+      <div class="max-w-2xl mx-auto px-5 pt-6">
+        <div class="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <span class="font-medium">Possible duplicate</span> —
+          <% @duplicates.each_with_index do |dup, i| %>
+            <%= link_to(dup.title.presence || "Untitled", essay_path(dup), class: "underline underline-offset-2") %><% unless i == @duplicates.size - 1 %>, <% end %>
+          <% end %>
+          may contain the same essay.
+        </div>
+      </div>
+    <% end %>
+
     <% if @essay.content.present? %>
       <article class="max-w-2xl mx-auto px-5 py-10 prose prose-zinc dark:prose-invert prose-base leading-relaxed">
         <header class="not-prose mb-10">

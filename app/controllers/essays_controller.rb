@@ -6,7 +6,8 @@ class EssaysController < ApplicationController
   end
 
   def show
-    @highlights = @essay.highlights.for_essay(@essay).includes(:tags)
+    @highlights  = @essay.highlights.for_essay(@essay).includes(:tags)
+    @duplicates  = @essay.potential_duplicates
   end
 
   def new
@@ -60,7 +61,7 @@ class EssaysController < ApplicationController
       html = PdfExtractor.initial_html(file.path)
       if html.present?
         words = PdfExtractor.word_count(html)
-        @essay.update_columns(content: html, word_count: words)
+        @essay.update_columns(content: html, word_count: words, content_simhash: DuplicateDetector.simhash(html))
       end
     end
 
