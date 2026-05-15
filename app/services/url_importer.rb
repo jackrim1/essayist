@@ -26,6 +26,16 @@ class UrlImporter
     HTML:
   PROMPT
 
+  METADATA_PROMPT = <<~PROMPT
+    From the text below (the opening of a document), identify the essay or article title and the author's name.
+
+    Output ONLY these two lines (write null if not found):
+    title: Title Here
+    author: Author Name
+
+    Text:
+  PROMPT
+
   Result = Data.define(:type, :content, :title, :author, :pdf_io, :pdf_filename)
 
   def self.call(url)
@@ -81,17 +91,21 @@ class UrlImporter
     filename = File.basename(URI.parse(url).path).presence || "import.pdf"
     filename += ".pdf" unless filename.downcase.end_with?(".pdf")
 
-    content = Tempfile.create([ "url_pdf", ".pdf" ], binmode: true) do |f|
+    raw_text = ""
+    content  = Tempfile.create([ "url_pdf", ".pdf" ], binmode: true) do |f|
       f.write(body)
       f.flush
+      raw_text = PdfExtractor.raw_text(f.path)
       PdfExtractor.initial_html(f.path)
     end
+
+    title, author = extract_metadata_from_text(raw_text)
 
     Result.new(
       type:         :pdf,
       content:      content,
-      title:        nil,
-      author:       nil,
+      title:        title,
+      author:       author,
       pdf_io:       StringIO.new(body.b),
       pdf_filename: filename
     )
@@ -113,6 +127,23 @@ class UrlImporter
     raise "No essay content extracted from page" if content.blank?
 
     Result.new(type: :html, content: content, title: title, author: author, pdf_io: nil, pdf_filename: nil)
+  end
+
+  def extract_metadata_from_text(text)
+    return [ nil, nil ] if text.blank?
+
+    sample   = text.first(3000)
+    response = claude_client.messages.create(
+      model:      MODEL,
+      max_tokens: 100,
+      messages:   [ { role: "user", content: METADATA_PROMPT + sample } ]
+    )
+    raw    = response.content.first.text.strip
+    title  = raw[/^title:\s*(.+)/i, 1]&.strip
+    author = raw[/^author:\s*(.+)/i, 1]&.strip
+    title  = nil if title.nil? || title.casecmp("null").zero?
+    author = nil if author.nil? || author.casecmp("null").zero?
+    [ title, author ]
   end
 
   def claude_client

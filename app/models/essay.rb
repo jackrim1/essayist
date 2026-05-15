@@ -5,7 +5,7 @@ class Essay < ApplicationRecord
 
   enum :view_mode, { infinite: 0, paged: 1 }
 
-  validates :title, presence: true
+  validates :title, presence: true, unless: -> { source_url.present? }
   validates :last_read_position, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
   validates :source_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: "must be a valid http/https URL" }, allow_blank: true
 

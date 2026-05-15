@@ -7,14 +7,18 @@ class UrlImporterTest < ActiveSupport::TestCase
 
   # ── PDF detection ──────────────────────────────────────────────────────────
 
-  test "detects PDF by content-type and returns initial html" do
+  test "detects PDF by content-type, extracts content and metadata" do
     stub_fetch(PDF_URL, PDF_BYTES, "application/pdf", PDF_URL)
     PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Content.</p>')
+    PdfExtractor.stubs(:raw_text).returns("As We May Think\nVannevar Bush\n\nConsider the problem...")
+    stub_claude_metadata("As We May Think", "Vannevar Bush")
 
     result = UrlImporter.call(PDF_URL)
 
     assert_equal :pdf, result.type
     assert_includes result.content, "prose-page"
+    assert_equal "As We May Think", result.title
+    assert_equal "Vannevar Bush", result.author
     assert_not_nil result.pdf_io
     assert_equal "paper.pdf", result.pdf_filename
   end
@@ -22,13 +26,29 @@ class UrlImporterTest < ActiveSupport::TestCase
   test "detects PDF by .pdf extension even when content-type is octet-stream" do
     stub_fetch(PDF_URL, PDF_BYTES, "application/octet-stream", PDF_URL)
     PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Content.</p>')
+    PdfExtractor.stubs(:raw_text).returns("Some essay text")
+    stub_claude_metadata(nil, nil)
 
     assert_equal :pdf, UrlImporter.call(PDF_URL).type
+  end
+
+  test "PDF returns nil title and author when metadata not found" do
+    stub_fetch(PDF_URL, PDF_BYTES, "application/pdf", PDF_URL)
+    PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Body.</p>')
+    PdfExtractor.stubs(:raw_text).returns("Some text without clear title")
+    stub_claude_metadata(nil, nil)
+
+    result = UrlImporter.call(PDF_URL)
+
+    assert_nil result.title
+    assert_nil result.author
   end
 
   test "PDF result contains binary io sized to original bytes" do
     stub_fetch(PDF_URL, PDF_BYTES, "application/pdf", PDF_URL)
     PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Body.</p>')
+    PdfExtractor.stubs(:raw_text).returns("Title\nAuthor\n\nBody text")
+    stub_claude_metadata("Title", "Author")
 
     result = UrlImporter.call(PDF_URL)
 
@@ -92,7 +112,6 @@ class UrlImporterTest < ActiveSupport::TestCase
 
   private
 
-  # Stub the private #fetch method to return [body, content_type, url]
   def stub_fetch(url, body, content_type, final_url)
     UrlImporter.any_instance.stubs(:fetch).returns([ body, content_type, final_url ])
   end
@@ -101,6 +120,7 @@ class UrlImporterTest < ActiveSupport::TestCase
     UrlImporter.any_instance.stubs(:fetch).raises(error)
   end
 
+  # Stubs the Anthropic client — used for HTML extraction tests
   def stub_claude(text)
     content_double  = mock(text: text.strip)
     message_double  = mock(content: [ content_double ])
@@ -109,5 +129,10 @@ class UrlImporterTest < ActiveSupport::TestCase
     client_double = mock
     client_double.stubs(:messages).returns(messages_double)
     Anthropic::Client.stubs(:new).returns(client_double)
+  end
+
+  # Stubs extract_metadata_from_text directly — used for PDF metadata tests
+  def stub_claude_metadata(title, author)
+    UrlImporter.any_instance.stubs(:extract_metadata_from_text).returns([ title, author ])
   end
 end
