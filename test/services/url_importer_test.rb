@@ -1,0 +1,113 @@
+require "test_helper"
+
+class UrlImporterTest < ActiveSupport::TestCase
+  PDF_URL   = "https://example.com/paper.pdf"
+  HTML_URL  = "https://example.com/essay"
+  PDF_BYTES = File.binread(Rails.root.join("test/fixtures/files/friedman.pdf"))
+
+  # ── PDF detection ──────────────────────────────────────────────────────────
+
+  test "detects PDF by content-type and returns initial html" do
+    stub_fetch(PDF_URL, PDF_BYTES, "application/pdf", PDF_URL)
+    PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Content.</p>')
+
+    result = UrlImporter.call(PDF_URL)
+
+    assert_equal :pdf, result.type
+    assert_includes result.content, "prose-page"
+    assert_not_nil result.pdf_io
+    assert_equal "paper.pdf", result.pdf_filename
+  end
+
+  test "detects PDF by .pdf extension even when content-type is octet-stream" do
+    stub_fetch(PDF_URL, PDF_BYTES, "application/octet-stream", PDF_URL)
+    PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Content.</p>')
+
+    assert_equal :pdf, UrlImporter.call(PDF_URL).type
+  end
+
+  test "PDF result contains binary io sized to original bytes" do
+    stub_fetch(PDF_URL, PDF_BYTES, "application/pdf", PDF_URL)
+    PdfExtractor.stubs(:initial_html).returns('<p class="prose-page">Body.</p>')
+
+    result = UrlImporter.call(PDF_URL)
+
+    assert_equal PDF_BYTES.bytesize, result.pdf_io.read.bytesize
+  end
+
+  # ── HTML extraction ────────────────────────────────────────────────────────
+
+  test "calls Claude for HTML pages and returns extracted content" do
+    html = "<html><body><h1>Title</h1><p>Essay text here.</p></body></html>"
+    stub_fetch(HTML_URL, html, "text/html", HTML_URL)
+
+    stub_claude(<<~RESP)
+      <!-- title: The Essay Title -->
+      <!-- author: George Orwell -->
+      <p class="prose-page">Essay text here.</p>
+    RESP
+
+    result = UrlImporter.call(HTML_URL)
+
+    assert_equal :html, result.type
+    assert_equal "The Essay Title", result.title
+    assert_equal "George Orwell", result.author
+    assert_includes result.content, '<p class="prose-page">Essay text here.</p>'
+    refute_includes result.content, "<!--"
+    assert_nil result.pdf_io
+  end
+
+  test "handles HTML page with no detectable title or author" do
+    stub_fetch(HTML_URL, "<html><body><p>Text.</p></body></html>", "text/html", HTML_URL)
+    stub_claude('<p class="prose-page">Text.</p>')
+
+    result = UrlImporter.call(HTML_URL)
+
+    assert_nil result.title
+    assert_nil result.author
+    assert_includes result.content, "prose-page"
+  end
+
+  test "raises when Claude returns blank content for HTML" do
+    stub_fetch(HTML_URL, "<html></html>", "text/html", HTML_URL)
+    stub_claude("<!-- title: Something -->")
+
+    err = assert_raises(RuntimeError) { UrlImporter.call(HTML_URL) }
+    assert_match(/No essay content extracted/, err.message)
+  end
+
+  # ── URL validation ─────────────────────────────────────────────────────────
+
+  test "raises on non-http scheme" do
+    err = assert_raises(ArgumentError) { UrlImporter.call("ftp://example.com/file.pdf") }
+    assert_match(/HTTP\/HTTPS/, err.message)
+  end
+
+  test "raises on HTTP error response" do
+    stub_fetch_error("https://example.com/missing", RuntimeError.new("HTTP 404: Not Found"))
+
+    err = assert_raises(RuntimeError) { UrlImporter.call("https://example.com/missing") }
+    assert_match(/404/, err.message)
+  end
+
+  private
+
+  # Stub the private #fetch method to return [body, content_type, url]
+  def stub_fetch(url, body, content_type, final_url)
+    UrlImporter.any_instance.stubs(:fetch).returns([ body, content_type, final_url ])
+  end
+
+  def stub_fetch_error(url, error)
+    UrlImporter.any_instance.stubs(:fetch).raises(error)
+  end
+
+  def stub_claude(text)
+    content_double  = mock(text: text.strip)
+    message_double  = mock(content: [ content_double ])
+    messages_double = mock
+    messages_double.stubs(:create).returns(message_double)
+    client_double = mock
+    client_double.stubs(:messages).returns(messages_double)
+    Anthropic::Client.stubs(:new).returns(client_double)
+  end
+end

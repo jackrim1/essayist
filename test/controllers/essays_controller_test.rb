@@ -88,4 +88,39 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     post essays_path, params: { essay: { title: "" } }
     assert_response :unprocessable_entity
   end
+
+  # ── URL import flow ───────────────────────────────────────────────────────
+
+  test "POST create with source_url enqueues ImportEssayFromUrlJob" do
+    assert_enqueued_with(job: ImportEssayFromUrlJob) do
+      post essays_path, params: { essay: {
+        title: "Common Toad",
+        source_url: "https://www.orwellfoundation.com/the-orwell-foundation/orwell/essays-and-other-works/some-thoughts-on-the-common-toad/"
+      } }
+    end
+
+    assert_redirected_to essay_path(Essay.last)
+    assert_equal "https://www.orwellfoundation.com/the-orwell-foundation/orwell/essays-and-other-works/some-thoughts-on-the-common-toad/", Essay.last.source_url
+  end
+
+  test "POST create with source_url does not enqueue LlmFormatEssayJob" do
+    assert_no_enqueued_jobs(only: LlmFormatEssayJob) do
+      post essays_path, params: { essay: {
+        title: "Test",
+        source_url: "https://example.com/essay"
+      } }
+    end
+  end
+
+  test "POST create with neither file nor url does not enqueue any import job" do
+    assert_no_enqueued_jobs(only: [ ImportEssayFromUrlJob, LlmFormatEssayJob ]) do
+      post essays_path, params: { essay: { title: "No Source Essay" } }
+    end
+    assert_redirected_to essay_path(Essay.last)
+  end
+
+  test "POST create with invalid source_url re-renders new" do
+    post essays_path, params: { essay: { title: "Bad URL", source_url: "not-a-url" } }
+    assert_response :unprocessable_entity
+  end
 end

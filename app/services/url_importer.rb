@@ -98,10 +98,11 @@ class UrlImporter
   end
 
   def from_html(html_body)
+    utf8_body = html_body.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
     response = claude_client.messages.create(
       model:      MODEL,
       max_tokens: 8192,
-      messages:   [ { role: "user", content: HTML_PROMPT + html_body } ]
+      messages:   [ { role: "user", content: HTML_PROMPT + utf8_body } ]
     )
     raw = response.content.first.text.strip
 
