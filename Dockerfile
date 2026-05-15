@@ -60,8 +60,8 @@ RUN groupadd --system --gid 1000 rails && \
 COPY --from=build --chown=rails:rails /usr/local/bundle /usr/local/bundle
 COPY --from=build --chown=rails:rails /rails /rails
 
-RUN chown rails:rails /rails && \
-    mkdir -p /rails/storage /rails/log /rails/tmp/pids /rails/tmp/cache
+RUN mkdir -p /rails/storage /rails/log /rails/tmp/pids /rails/tmp/cache && \
+    chown -R rails:rails /rails
 
 USER rails
 
