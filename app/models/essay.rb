@@ -7,6 +7,7 @@ class Essay < ApplicationRecord
 
   validates :title, presence: true
   validates :last_read_position, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
+  validates :source_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: "must be a valid http/https URL" }, allow_blank: true
 
   scope :recent, -> { order(updated_at: :desc) }
 

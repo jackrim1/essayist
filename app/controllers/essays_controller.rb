@@ -17,8 +17,12 @@ class EssaysController < ApplicationController
     @essay = current_user.essays.build(essay_params)
 
     if @essay.save
-      extract_text_now_then_enqueue_llm
-      redirect_to @essay, notice: "Essay uploaded."
+      if @essay.original_file.attached?
+        extract_text_now_then_enqueue_llm
+      elsif @essay.source_url.present?
+        ImportEssayFromUrlJob.perform_later(@essay.id, @essay.source_url)
+      end
+      redirect_to @essay, notice: "Essay saved."
     else
       render :new, status: :unprocessable_entity
     end
@@ -46,7 +50,7 @@ class EssaysController < ApplicationController
   end
 
   def essay_params
-    params.require(:essay).permit(:title, :author, :view_mode, :original_file)
+    params.require(:essay).permit(:title, :author, :view_mode, :original_file, :source_url)
   end
 
   def extract_text_now_then_enqueue_llm
