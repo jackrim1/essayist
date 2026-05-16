@@ -21,7 +21,7 @@ class RecommendationService
 
     prompt = prompt_template.render(
       title:           @essay.title.to_s,
-      author:          @essay.author.to_s,
+      author:          @essay.author_name.to_s,
       content_excerpt: content_excerpt
     )
 

@@ -44,7 +44,7 @@ class GenerateRecommendationsJob < ApplicationJob
 
   # Returns a Set of normalised "title author" keys for every essay the user owns.
   def library_keys(user)
-    user.essays.pluck(:title, :author).map do |title, author|
+    user.essays.pluck(:title, :author_name).map do |title, author|
       normalise("#{title} #{author}")
     end.to_set
   end

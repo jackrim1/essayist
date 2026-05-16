@@ -6,6 +6,7 @@ class User < ApplicationRecord
   has_many :highlights,       dependent: :destroy
   has_many :tags,             dependent: :destroy
   has_many :recommendations,  dependent: :destroy
+  has_many :authors,          dependent: :destroy
 
   FONT_SIZES  = %w[text-sm text-base text-lg text-xl text-2xl].freeze
   VIEW_MODES  = %w[infinite paged].freeze

@@ -14,7 +14,8 @@ Rails.application.routes.draw do
     resources :highlight_tags, only: %i[create destroy], path: :tags
   end
 
-  resources :tags, only: %i[index show], param: :name
+  resources :tags,    only: %i[index show], param: :name
+  resources :authors, only: [:show]
 
   resource :preferences, only: [:update]
 

@@ -20,8 +20,9 @@ class ImportEssayFromUrlJob < ApplicationJob
       attrs[:content_simhash] = DuplicateDetector.simhash(result.content)
     end
     attrs[:title]  = result.title  if result.title.present?  && essay.title.blank?
-    attrs[:author] = result.author if result.author.present? && essay.author.blank?
+    attrs[:author_name] = result.author if result.author.present? && essay.author_name.blank?
     essay.update_columns(**attrs) if attrs.any?
+    AuthorMatcher.resolve(essay) if attrs[:author_name].present?
 
     LlmFormatEssayJob.perform_later(essay_id) if result.type == :pdf
   rescue => e

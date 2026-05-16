@@ -18,6 +18,7 @@ class EssaysController < ApplicationController
     @essay = current_user.essays.build(essay_params)
 
     if @essay.save
+      AuthorMatcher.resolve(@essay)
       if @essay.original_file.attached?
         extract_text_now_then_enqueue_llm
       elsif @essay.source_url.present?
@@ -33,6 +34,7 @@ class EssaysController < ApplicationController
 
   def update
     if @essay.update(essay_params)
+      AuthorMatcher.resolve(@essay)
       redirect_to @essay, notice: "Saved."
     else
       render :edit, status: :unprocessable_entity
@@ -51,7 +53,7 @@ class EssaysController < ApplicationController
   end
 
   def essay_params
-    params.require(:essay).permit(:title, :author, :view_mode, :original_file, :source_url)
+    params.require(:essay).permit(:title, :author_name, :view_mode, :original_file, :source_url)
   end
 
   def extract_text_now_then_enqueue_llm

@@ -1,5 +1,6 @@
 class Essay < ApplicationRecord
   belongs_to :user
+  belongs_to :author, optional: true
   has_many   :highlights,      dependent: :destroy
   has_many   :recommendations, dependent: :destroy
   has_one_attached :original_file
