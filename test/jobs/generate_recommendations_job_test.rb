@@ -99,6 +99,32 @@ class GenerateRecommendationsJobTest < ActiveSupport::TestCase
     assert_match(/RecommendationPrompt/, @recommendation.error_message)
   end
 
+  test "job does not raise when broadcast fails inside rescue block" do
+    RecommendationPrompt.delete_all
+    Turbo::StreamsChannel.stubs(:broadcast_replace_to).raises(ArgumentError, "No unique index found for id")
+
+    assert_nothing_raised { GenerateRecommendationsJob.new.perform(@recommendation.id) }
+    assert @recommendation.reload.failed?
+  end
+
+  test "job clears previous results before recreating on retry" do
+    VerifyRecommendationUrlJob.stubs(:perform_later)
+    Turbo::StreamsChannel.stubs(:broadcast_replace_to)
+
+    two_results = [
+      { "title" => "Essay A", "author" => "Author A", "description" => "D", "url" => nil, "url_type" => nil },
+      { "title" => "Essay B", "author" => "Author B", "description" => "D", "url" => nil, "url_type" => nil }
+    ]
+    RecommendationService.stubs(:call).returns(two_results)
+
+    # Run twice (simulating a retry)
+    GenerateRecommendationsJob.new.perform(@recommendation.id)
+    @recommendation.update!(status: :pending)  # reset for retry
+    GenerateRecommendationsJob.new.perform(@recommendation.id)
+
+    assert_equal 2, @recommendation.results.reload.count
+  end
+
   test "job renumbers positions after filtering" do
     GenerateRecommendationsJob.stubs(:perform_later)
     VerifyRecommendationUrlJob.stubs(:perform_later)

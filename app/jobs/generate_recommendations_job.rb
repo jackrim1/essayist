@@ -11,6 +11,7 @@ class GenerateRecommendationsJob < ApplicationJob
 
     position = 0
     recommendation.transaction do
+      recommendation.results.destroy_all
       filtered.each do |data|
         position += 1
         recommendation.results.create!(
@@ -36,7 +37,7 @@ class GenerateRecommendationsJob < ApplicationJob
     end
   rescue => e
     recommendation&.update!(status: :failed, error_message: e.message)
-    broadcast_results(recommendation) if recommendation
+    broadcast_results(recommendation) rescue nil
     Rails.logger.error "GenerateRecommendationsJob failed for Recommendation##{recommendation_id}: #{e.message}"
   end
 
