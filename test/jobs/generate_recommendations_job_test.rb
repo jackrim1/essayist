@@ -89,6 +89,16 @@ class GenerateRecommendationsJobTest < ActiveSupport::TestCase
     assert_equal 10, titles.size  # 10 unique non-owned kept
   end
 
+  test "job marks recommendation failed when prompt row is missing" do
+    RecommendationPrompt.delete_all
+    Turbo::StreamsChannel.stubs(:broadcast_replace_to)
+
+    GenerateRecommendationsJob.new.perform(@recommendation.id)
+
+    assert @recommendation.reload.failed?
+    assert_match(/RecommendationPrompt/, @recommendation.error_message)
+  end
+
   test "job renumbers positions after filtering" do
     GenerateRecommendationsJob.stubs(:perform_later)
     VerifyRecommendationUrlJob.stubs(:perform_later)

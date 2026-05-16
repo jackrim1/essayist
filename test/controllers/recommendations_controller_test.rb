@@ -69,6 +69,19 @@ class RecommendationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "ol"
   end
 
+  test "GET show renders failed recommendation without raising" do
+    rec = recommendations(:author_failed)
+    get recommendation_path(rec)
+    assert_response :success
+  end
+
+  test "GET show displays error message on failed recommendation" do
+    rec = recommendations(:author_failed)
+    get recommendation_path(rec)
+    assert_select "[id='recommendation-content']"
+    assert_match(/RecommendationPrompt/, response.body)
+  end
+
   test "GET show requires authentication" do
     sign_out @user
     get recommendation_path(recommendations(:author_pending))

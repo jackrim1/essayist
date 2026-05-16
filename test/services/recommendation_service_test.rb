@@ -41,6 +41,11 @@ class RecommendationServiceTest < ActiveSupport::TestCase
     assert_raises(RuntimeError) { RecommendationService.call(@recommendation) }
   end
 
+  test "raises RecordNotFound when the prompt row is missing" do
+    RecommendationPrompt.delete_all
+    assert_raises(ActiveRecord::RecordNotFound) { RecommendationService.call(@recommendation) }
+  end
+
   private
 
   def stub_claude(response_text)

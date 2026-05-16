@@ -9,3 +9,10 @@ subject_complete:
   user: one
   kind: subject
   status: 3
+
+author_failed:
+  essay: one
+  user: one
+  kind: author
+  status: 4
+  error_message: "Couldn't find RecommendationPrompt with [WHERE kind = 'author']"
