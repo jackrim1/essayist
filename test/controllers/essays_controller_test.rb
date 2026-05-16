@@ -101,6 +101,35 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
+  # ── Index layout ─────────────────────────────────────────────────────────────
+
+  test "index renders search input" do
+    get essays_path
+    assert_select "input[data-essay-search-target='input']"
+  end
+
+  test "index search input and icon are in the same container" do
+    get essays_path
+    assert_select "[data-controller='essay-search'] .flex.items-center input"
+  end
+
+  test "index search dropdown is absolutely positioned" do
+    get essays_path
+    assert_select "ul[data-essay-search-target='results']"
+  end
+
+  test "index always renders highlights panel" do
+    get essays_path
+    assert_select "#highlights-panel"
+    assert_select "#highlights-panel h2", text: /Highlights/i
+  end
+
+  test "index highlights panel shows empty state when no highlights" do
+    @user.highlights.destroy_all
+    get essays_path
+    assert_select "#highlights-panel", text: /No highlights yet/
+  end
+
   # ── Search ───────────────────────────────────────────────────────────────────
 
   test "GET search returns JSON with matching essays" do
