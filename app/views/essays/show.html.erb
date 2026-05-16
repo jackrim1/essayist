@@ -58,7 +58,7 @@
     <% end %>
 
     <% if @essay.content.present? %>
-      <article class="max-w-2xl mx-auto px-5 py-10 prose prose-zinc dark:prose-invert prose-base leading-relaxed">
+      <article class="max-w-2xl mx-auto px-5 py-10 prose prose-zinc dark:prose-invert prose-base leading-relaxed break-words">
         <header class="not-prose mb-10">
           <h1 class="text-2xl font-bold tracking-tight"><%= @essay.title.presence || "Untitled" %></h1>
           <% if @essay.author.present? %>

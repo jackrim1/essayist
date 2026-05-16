@@ -2,6 +2,25 @@
  * Custom styles for Essayist — loaded alongside the Tailwind build.
  */
 
+/* ── Viewport / mobile robustness ──────────────────────────────────────── */
+
+/* Hard-clip horizontal overflow so no element can push the viewport wider
+   than the screen. On mobile this prevents the "zoomed out / content outside
+   viewport" symptom caused by long words, raw URLs, or oversized images in
+   essay content. clip on <html> preserves position:sticky; hidden on <body>
+   gives broad browser coverage. */
+html {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  /* Prevent iOS from auto-scaling text on orientation change. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* Paged view mode — CSS scroll snap (targets content element when snap classes are active) */
 [data-reader-settings-target="content"].snap-y {
   scroll-snap-type: y mandatory;
@@ -22,12 +41,23 @@
   padding-bottom: env(safe-area-inset-bottom, 1rem);
 }
 
-/* Paragraph spacing in the reader */
+/* ── Essay reader content ───────────────────────────────────────────────── */
+
+/* Wrap long words (URLs, Latin, technical terms) so they never overflow
+   their paragraph box and trigger horizontal scroll on mobile. */
 .prose-page {
   margin-bottom: 1.5em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-/* Highlighted text colours in the reader */
+/* Constrain any images embedded in essay content. */
+article img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Highlighted text colours in the reader ─────────────────────────────── */
 .highlight-yellow { background-color: rgb(253 224 71 / 0.4); }
 .highlight-green  { background-color: rgb(134 239 172 / 0.4); }
 .highlight-blue   { background-color: rgb(147 197 253 / 0.4); }
