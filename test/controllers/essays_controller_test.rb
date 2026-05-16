@@ -101,6 +101,18 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
+  # ── PWA / safe area ──────────────────────────────────────────────────────────
+
+  test "index header has pt-safe for iOS status bar clearance" do
+    get essays_path
+    assert_select "header.pt-safe"
+  end
+
+  test "show header has pt-safe for iOS status bar clearance" do
+    get essay_path(@essay)
+    assert_select "header.pt-safe"
+  end
+
   # ── Index layout ─────────────────────────────────────────────────────────────
 
   test "index renders search input" do
