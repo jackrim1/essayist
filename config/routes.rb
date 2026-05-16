@@ -6,7 +6,9 @@ Rails.application.routes.draw do
   resources :essays do
     resource  :position,  only: [:update], controller: "positions"
     resources :highlights, only: %i[create destroy]
+    resources :recommendations, only: [:create]
   end
+  resources :recommendations, only: [:show]
 
   resources :highlights, only: [] do
     resources :highlight_tags, only: %i[create destroy], path: :tags

@@ -1,6 +1,7 @@
 class Essay < ApplicationRecord
   belongs_to :user
-  has_many   :highlights, dependent: :destroy
+  has_many   :highlights,      dependent: :destroy
+  has_many   :recommendations, dependent: :destroy
   has_one_attached :original_file
 
   enum :view_mode, { infinite: 0, paged: 1 }

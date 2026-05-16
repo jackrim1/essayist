@@ -1,0 +1,11 @@
+author_pending:
+  essay: one
+  user: one
+  kind: author
+  status: 0
+
+subject_complete:
+  essay: one
+  user: one
+  kind: subject
+  status: 3

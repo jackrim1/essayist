@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_15_220700) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_16_102853) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -83,6 +83,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_15_220700) do
     t.index ["essay_id", "created_at"], name: "index_highlights_on_essay_id_and_created_at"
     t.index ["essay_id"], name: "index_highlights_on_essay_id"
     t.index ["user_id"], name: "index_highlights_on_user_id"
+  end
+
+  create_table "recommendation_prompts", force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.string "kind"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "recommendation_results", force: :cascade do |t|
+    t.string "author"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.integer "position"
+    t.bigint "recommendation_id", null: false
+    t.string "search_query"
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.string "url_type"
+    t.string "url_verification_note"
+    t.boolean "url_verified"
+    t.index ["recommendation_id"], name: "index_recommendation_results_on_recommendation_id"
+  end
+
+  create_table "recommendations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.bigint "essay_id", null: false
+    t.string "kind"
+    t.integer "status"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["essay_id"], name: "index_recommendations_on_essay_id"
+    t.index ["user_id"], name: "index_recommendations_on_user_id"
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -236,6 +271,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_15_220700) do
   add_foreign_key "highlight_tags", "tags"
   add_foreign_key "highlights", "essays"
   add_foreign_key "highlights", "users"
+  add_foreign_key "recommendation_results", "recommendations"
+  add_foreign_key "recommendations", "essays"
+  add_foreign_key "recommendations", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

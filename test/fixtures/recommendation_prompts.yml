@@ -1,0 +1,7 @@
+author:
+  kind: author
+  body: "You are a literary assistant. Recommend exactly 10 essays by {{author}} or similar authors. Essay: {{title}}. Return JSON array of exactly 10 objects."
+
+subject:
+  kind: subject
+  body: "You are a literary assistant. Recommend exactly 10 essays on the same subject as {{title}} by {{author}}. About: {{content_excerpt}}. Return JSON array of exactly 10 objects."

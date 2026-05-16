@@ -1,0 +1,21 @@
+one:
+  recommendation: subject_complete
+  position: 1
+  title: "De Brevitate Vitae"
+  author: "Seneca"
+  description: "A meditation on using time wisely."
+  url: "https://example.com/de-brevitate"
+  url_type: html
+  url_verified: true
+  url_verification_note: "Page contains the full essay."
+
+two:
+  recommendation: subject_complete
+  position: 2
+  title: "On the Shortness of Life (summary)"
+  author: "Various"
+  description: "Summary of key ideas."
+  url:
+  url_type:
+  url_verified:
+  url_verification_note:
