@@ -2,21 +2,13 @@
  * Custom styles for Essayist — loaded alongside the Tailwind build.
  */
 
-/* ── Viewport / mobile robustness ──────────────────────────────────────── */
+/* ── Mobile text / orientation ─────────────────────────────────────────── */
 
-/* Hard-clip horizontal overflow so no element can push the viewport wider
-   than the screen. On mobile this prevents the "zoomed out / content outside
-   viewport" symptom caused by long words, raw URLs, or oversized images in
-   essay content. clip on <html> preserves position:sticky; hidden on <body>
-   gives broad browser coverage. */
-html {
-  overflow-x: clip;
-  max-width: 100%;
-}
-
-body {
-  overflow-x: hidden;
-  /* Prevent iOS from auto-scaling text on orientation change. */
+/* Prevent iOS from auto-scaling text when the device rotates.
+   Do NOT add overflow-x: hidden or overflow-x: clip here — on iOS Safari,
+   any overflow restriction on <html> or <body> combined with h-full disables
+   window scrolling, breaking scroll-position tracking entirely. */
+html, body {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -44,7 +36,8 @@ body {
 /* ── Essay reader content ───────────────────────────────────────────────── */
 
 /* Wrap long words (URLs, Latin, technical terms) so they never overflow
-   their paragraph box and trigger horizontal scroll on mobile. */
+   their paragraph box and trigger horizontal scroll on mobile. The clip is
+   applied here at the content level, not at html/body level. */
 .prose-page {
   margin-bottom: 1.5em;
   overflow-wrap: break-word;

@@ -19,6 +19,28 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  # Regression: overflow-x-hidden on <body> combined with h-full disables
+  # window scrolling on iOS, breaking scroll-position tracking entirely.
+  test "show page body tag does not carry overflow-hidden classes" do
+    get essay_path(@essay)
+    assert_select "body" do |nodes|
+      cls = nodes.first["class"].to_s
+      assert_not cls.include?("overflow-hidden"),   "overflow-hidden on body kills iOS scrolling"
+      assert_not cls.include?("overflow-x-hidden"), "overflow-x-hidden on body kills iOS scrolling"
+    end
+  end
+
+  test "show page renders scroll-position controller with save URL and position" do
+    get essay_path(@essay)
+    assert_select "[data-controller~='scroll-position']" do |nodes|
+      el = nodes.first
+      assert el["data-scroll-position-save-url-value"].present?,
+             "scroll-position save URL must be set"
+      assert el["data-scroll-position-position-value"].present?,
+             "scroll-position position value must be set"
+    end
+  end
+
   test "GET new returns 200" do
     get new_essay_path
     assert_response :success
