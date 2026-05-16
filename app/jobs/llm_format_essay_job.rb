@@ -12,6 +12,12 @@ class LlmFormatEssayJob < ApplicationJob
         words = PdfExtractor.word_count(llm_html)
         essay.update!(content: llm_html, word_count: words)
         Rails.logger.info "LlmFormatEssayJob: replaced content for Essay##{essay_id} (#{words} words)"
+        Turbo::StreamsChannel.broadcast_replace_to(
+          essay,
+          target: ActionView::RecordIdentifier.dom_id(essay, :content),
+          partial: "essays/essay_content",
+          locals:  { essay: essay }
+        )
       else
         Rails.logger.warn "LlmFormatEssayJob: rejected LLM output for Essay##{essay_id}, keeping heuristic content"
       end

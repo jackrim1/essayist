@@ -36,6 +36,35 @@ class LlmFormatEssayJobTest < ActiveJob::TestCase
     assert_equal original, @essay.reload.content
   end
 
+  test "broadcasts content replacement when LLM output passes quality gate" do
+    good_html = '<p class="prose-page">' + ("word " * 100) + "</p>"
+    @essay.update_columns(content: '<p class="prose-page">' + ("word " * 95) + "</p>")
+    attach_pdf
+
+    PdfExtractor.stubs(:llm_html).returns(good_html)
+
+    broadcast_called = false
+    Turbo::StreamsChannel.stubs(:broadcast_replace_to).with do |essay, **|
+      broadcast_called = true
+      essay == @essay
+    end
+
+    LlmFormatEssayJob.perform_now(@essay.id)
+
+    assert broadcast_called, "expected Turbo broadcast when LLM content accepted"
+  end
+
+  test "does not broadcast when LLM output fails quality gate" do
+    original = '<p class="prose-page">' + ("word " * 100) + "</p>"
+    @essay.update_columns(content: original)
+    attach_pdf
+
+    PdfExtractor.stubs(:llm_html).returns('<p class="prose-page">' + ("word " * 20) + "</p>")
+    Turbo::StreamsChannel.expects(:broadcast_replace_to).never
+
+    LlmFormatEssayJob.perform_now(@essay.id)
+  end
+
   test "keeps existing content and enqueues retry when LLM errors" do
     original = @essay.content
     attach_pdf

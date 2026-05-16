@@ -24,9 +24,25 @@ class ImportEssayFromUrlJob < ApplicationJob
     essay.update_columns(**attrs) if attrs.any?
     AuthorMatcher.resolve(essay) if attrs[:author_name].present?
 
+    if attrs[:content].present?
+      essay.reload
+      broadcast_content(essay)
+    end
+
     LlmFormatEssayJob.perform_later(essay_id) if result.type == :pdf
   rescue => e
     Rails.logger.error "ImportEssayFromUrlJob failed for Essay##{essay_id}: #{e.message}"
     raise
+  end
+
+  private
+
+  def broadcast_content(essay)
+    Turbo::StreamsChannel.broadcast_replace_to(
+      essay,
+      target: ActionView::RecordIdentifier.dom_id(essay, :content),
+      partial: "essays/essay_content",
+      locals:  { essay: essay }
+    )
   end
 end

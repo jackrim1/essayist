@@ -34,6 +34,22 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{author_path(@essay.author)}']", text: @essay.author_name
   end
 
+  test "show page subscribes to essay turbo stream" do
+    get essay_path(@essay)
+    assert_select "turbo-cable-stream-source[channel='Turbo::StreamsChannel']"
+  end
+
+  test "show page wraps content in turbo-replaceable div" do
+    get essay_path(@essay)
+    assert_select "##{ActionView::RecordIdentifier.dom_id(@essay, :content)}"
+  end
+
+  test "show page renders spinner when essay has no content" do
+    @essay.update_columns(content: nil)
+    get essay_path(@essay)
+    assert_select ".animate-spin"
+  end
+
   # Regression: overflow-x-hidden on <body> combined with h-full disables
   # window scrolling on iOS, breaking scroll-position tracking entirely.
   test "show page body tag does not carry overflow-hidden classes" do

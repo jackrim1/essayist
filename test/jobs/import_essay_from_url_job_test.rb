@@ -14,14 +14,14 @@ class ImportEssayFromUrlJobTest < ActiveJob::TestCase
     )
     UrlImporter.stubs(:call).returns(result)
 
-    @essay.update_columns(title: "", author: "")
+    @essay.update_columns(title: "", author_name: "")
     ImportEssayFromUrlJob.perform_now(@essay.id, @url)
 
     @essay.reload
     assert_equal html, @essay.content
     assert_equal PdfExtractor.word_count(html), @essay.word_count
     assert_equal "Extracted Title", @essay.title
-    assert_equal "Extracted Author", @essay.author
+    assert_equal "Extracted Author", @essay.author_name
   end
 
   test "does not overwrite existing title or author" do
@@ -32,12 +32,12 @@ class ImportEssayFromUrlJobTest < ActiveJob::TestCase
     )
     UrlImporter.stubs(:call).returns(result)
 
-    @essay.update_columns(title: "My Title", author: "My Author")
+    @essay.update_columns(title: "My Title", author_name: "My Author")
     ImportEssayFromUrlJob.perform_now(@essay.id, @url)
 
     @essay.reload
     assert_equal "My Title", @essay.title
-    assert_equal "My Author", @essay.author
+    assert_equal "My Author", @essay.author_name
   end
 
   test "sets title when essay title is blank" do
@@ -73,6 +73,36 @@ class ImportEssayFromUrlJobTest < ActiveJob::TestCase
     @essay.reload
     assert @essay.original_file.attached?
     assert_includes @essay.content, "prose-page"
+  end
+
+  test "broadcasts essay content replacement after successful HTML import" do
+    html = '<p class="prose-page">Fresh content from import.</p>'
+    result = UrlImporter::Result.new(
+      type: :html, content: html, title: nil,
+      author: nil, pdf_io: nil, pdf_filename: nil
+    )
+    UrlImporter.stubs(:call).returns(result)
+
+    broadcast_called = false
+    Turbo::StreamsChannel.stubs(:broadcast_replace_to).with do |essay, **|
+      broadcast_called = true
+      essay == @essay
+    end
+
+    ImportEssayFromUrlJob.perform_now(@essay.id, @url)
+
+    assert broadcast_called, "expected Turbo broadcast after content import"
+  end
+
+  test "does not broadcast when import yields no content" do
+    result = UrlImporter::Result.new(
+      type: :html, content: nil, title: "Title only",
+      author: nil, pdf_io: nil, pdf_filename: nil
+    )
+    UrlImporter.stubs(:call).returns(result)
+    Turbo::StreamsChannel.expects(:broadcast_replace_to).never
+
+    ImportEssayFromUrlJob.perform_now(@essay.id, @url)
   end
 
   test "does not enqueue LlmFormatEssayJob for HTML result" do
