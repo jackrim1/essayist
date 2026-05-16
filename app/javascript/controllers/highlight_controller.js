@@ -17,11 +17,13 @@ export default class extends Controller {
     this._streamRenderHandler = this._onBeforeStreamRender.bind(this)
     this._markClickHandler   = this._onMarkClick.bind(this)
     this._docClickHandler    = this._onDocClick.bind(this)
+    this._listScrollHandler  = this._onListItemClick.bind(this)
 
     document.addEventListener("selectionchange",             this._selectionHandler)
     document.addEventListener("turbo:submit-end",            this._submitEndHandler)
     document.addEventListener("turbo:before-stream-render",  this._streamRenderHandler)
     document.addEventListener("click",                       this._docClickHandler)
+    document.addEventListener("click",                       this._listScrollHandler)
     this.element.addEventListener("click",                   this._markClickHandler)
 
     // Re-apply all marks cleanly (handles Turbo cache restoration too)
@@ -35,6 +37,7 @@ export default class extends Controller {
     document.removeEventListener("turbo:submit-end",            this._submitEndHandler)
     document.removeEventListener("turbo:before-stream-render",  this._streamRenderHandler)
     document.removeEventListener("click",         this._docClickHandler)
+    document.removeEventListener("click",         this._listScrollHandler)
     this.element.removeEventListener("click",     this._markClickHandler)
     this._hideTagPopover()
     this._hideToolbar()
@@ -173,6 +176,15 @@ export default class extends Controller {
         !event.target.closest("mark[data-hl-id]")) {
       this._hideTagPopover()
     }
+  }
+
+  _onListItemClick(event) {
+    const el = event.target.closest("[data-highlight-scroll-id]")
+    if (!el) return
+    const id = el.dataset.highlightScrollId
+    const mark = this.element.querySelector(`mark[data-hl-id="${id}"]`)
+    if (!mark) return
+    mark.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
   _renderTagPopover(mark) {

@@ -176,6 +176,55 @@ class HighlightTest < ApplicationSystemTestCase
     assert_no_selector "#highlight_#{highlight.id}", wait: 3
   end
 
+  test "delete button shows a trash icon (SVG)" do
+    highlight = Highlight.create!(
+      essay: @essay, user: @user,
+      content: "short time to live", color: "yellow", anchor: {}
+    )
+
+    visit essay_path(@essay)
+
+    within "#highlight_#{highlight.id}" do
+      assert_selector "form[action*='highlight'] button svg"
+    end
+  end
+
+  test "clicking highlight content scrolls its mark into the reader viewport" do
+    long_content = "<p class=\"prose-page\">#{ESSAY_TEXT}</p>\n" +
+                   ("<p class=\"prose-page\">Filler paragraph to push content down.</p>\n" * 25)
+    @essay.update!(content: long_content)
+
+    highlight = Highlight.create!(
+      essay: @essay, user: @user,
+      content: "It is not that we",
+      color: "yellow",
+      anchor: { startPara: 0, startOffset: 0, endPara: 0, endOffset: 18 }
+    )
+
+    visit essay_path(@essay)
+    assert_selector "article mark[data-hl-id='#{highlight.id}']", wait: 3
+
+    # Scroll reader content down so the mark (at top) is out of view
+    page.execute_script("document.getElementById('reader-content').scrollTop = 800")
+
+    find("p[data-highlight-scroll-id='#{highlight.id}']").click
+
+    # Wait for smooth scroll
+    sleep 0.6
+
+    mark_visible = page.evaluate_script(<<~JS)
+      (() => {
+        const mark = document.querySelector("mark[data-hl-id='#{highlight.id}']");
+        if (!mark) return false;
+        const container = document.getElementById('reader-content');
+        const cr = container.getBoundingClientRect();
+        const mr = mark.getBoundingClientRect();
+        return mr.top >= cr.top && mr.bottom <= cr.bottom;
+      })()
+    JS
+    assert mark_visible, "clicking the highlight card should scroll its mark into the reader viewport"
+  end
+
   # ── Regression: toolbar survives post-drag click on content ────────────────
 
   test "toolbar survives the click that fires after completing a mouse-drag selection" do
