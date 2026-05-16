@@ -55,7 +55,7 @@ class HighlightsControllerTest < ActionDispatch::IntegrationTest
 
   test "DELETE destroy cannot remove another user's highlight" do
     other_user  = User.create!(email: "other@example.com", password: "password123")
-    other_essay = other_user.essays.create!(title: "Other", last_read_position: 0, view_mode: :infinite)
+    other_essay = Essay.create!(title: "Other")
     other_hl    = Highlight.create!(essay: other_essay, user: other_user, content: "text", color: "yellow", anchor: {})
 
     delete essay_highlight_path(other_essay, other_hl), as: :turbo_stream

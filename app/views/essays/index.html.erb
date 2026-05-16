@@ -29,6 +29,21 @@
   </header>
 
   <main class="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+    <!-- Search -->
+    <div class="mb-6" data-controller="essay-search" data-essay-search-url-value="<%= essays_search_path %>">
+      <div class="relative">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text"
+               placeholder="Search essays and authors…"
+               data-essay-search-target="input"
+               data-action="input->essay-search#search"
+               class="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100">
+      </div>
+      <ul data-essay-search-target="results"
+          class="hidden mt-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+      </ul>
+    </div>
+
     <div class="flex flex-col lg:flex-row gap-8 items-start">
       <!-- Essay list -->
       <div class="flex-1 min-w-0">
@@ -40,7 +55,9 @@
         <% else %>
           <ul class="space-y-px">
             <% @essays.each do |essay| %>
-              <%= render "essay", essay: essay, highlight_count: (@highlight_counts[essay.id] || 0) %>
+              <%= render "essay", essay: essay,
+                    highlight_count: (@highlight_counts[essay.id] || 0),
+                    progress: @progress[essay.id] %>
             <% end %>
           </ul>
         <% end %>

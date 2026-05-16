@@ -1,29 +1,29 @@
 class Essay < ApplicationRecord
-  belongs_to :user
   belongs_to :author, optional: true
-  has_many   :highlights,      dependent: :destroy
-  has_many   :recommendations, dependent: :destroy
+  belongs_to :uploaded_by, class_name: "User", foreign_key: :uploaded_by_id, optional: true
+
+  has_many :highlights,       dependent: :destroy
+  has_many :recommendations,  dependent: :destroy
+  has_many :essay_progresses, dependent: :destroy
   has_one_attached :original_file
 
-  enum :view_mode, { infinite: 0, paged: 1 }
-
   validates :title, presence: true, unless: -> { source_url.present? }
-  validates :last_read_position, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
-  validates :source_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: "must be a valid http/https URL" }, allow_blank: true
+  validates :source_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), message: "must be a valid URL" }, allow_blank: true
 
   before_save :refresh_simhash, if: :content_changed?
 
   scope :recent, -> { order(updated_at: :desc) }
+  scope :search_by, ->(q) {
+    safe_q = sanitize_sql_like(q)
+    where("title ILIKE :prefix OR author_name ILIKE :prefix OR title % :q", prefix: "%#{safe_q}%", q: q)
+      .order(Arel.sql("similarity(title, #{connection.quote(q)}) DESC"))
+  }
 
   def potential_duplicates
-    by_title    = title.present?         ? title_matches    : []
-    by_content  = content_simhash.present? ? content_matches : []
+    by_title   = title.present?            ? title_matches   : []
+    by_content = content_simhash.present?  ? content_matches : []
     ids = (by_title + by_content).uniq
-    ids.any? ? user.essays.where(id: ids) : self.class.none
-  end
-
-  def reading_percent
-    (last_read_position * 100).round
+    ids.any? ? Essay.where(id: ids).where.not(id: id) : Essay.none
   end
 
   def estimated_minutes
@@ -39,15 +39,14 @@ class Essay < ApplicationRecord
 
   def title_matches
     normalized = title.downcase.gsub(/[^a-z0-9\s]/, " ").squish
-    user.essays.where.not(id: id)
-        .where("lower(regexp_replace(title, '[^a-z0-9 ]', ' ', 'g')) = ?", normalized)
-        .pluck(:id)
+    Essay.where.not(id: id)
+         .where("lower(regexp_replace(title, '[^a-z0-9 ]', ' ', 'g')) = ?", normalized)
+         .pluck(:id)
   end
 
   def content_matches
-    user.essays.where.not(id: id).where.not(content_simhash: nil)
-        .pluck(:id, :content_simhash)
-        .filter_map { |id, hash| id if DuplicateDetector.similar?(content_simhash, hash) }
+    Essay.where.not(id: id).where.not(content_simhash: nil)
+         .pluck(:id, :content_simhash)
+         .filter_map { |eid, hash| eid if DuplicateDetector.similar?(content_simhash, hash) }
   end
-
 end

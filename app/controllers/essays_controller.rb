@@ -2,22 +2,34 @@ class EssaysController < ApplicationController
   before_action :set_essay, only: %i[show edit update destroy]
 
   def index
-    @essays            = current_user.essays.recent
+    @essays            = Essay.recent
     @highlight_counts  = current_user.highlights.group(:essay_id).count
     @recent_highlights = current_user.highlights.recent(10).includes(:essay)
+    progress_records   = current_user.essay_progresses.where(essay_id: @essays.map(&:id))
+    @progress          = progress_records.index_by(&:essay_id)
+  end
+
+  def search
+    q = params[:q].to_s.strip
+    essays = q.length >= 2 ? Essay.search_by(q).limit(8) : Essay.none
+    render json: essays.map { |e|
+      { id: e.id, title: e.title, author_name: e.author_name, path: essay_path(e) }
+    }
   end
 
   def show
-    @highlights  = @essay.highlights.for_essay(@essay).includes(:tags)
-    @duplicates  = @essay.potential_duplicates
+    @highlights = @essay.highlights.for_essay(@essay).includes(:tags)
+    @duplicates = @essay.potential_duplicates
+    @progress   = current_user.essay_progresses.find_or_initialize_by(essay_id: @essay.id)
   end
 
   def new
-    @essay = current_user.essays.build
+    @essay = Essay.new
   end
 
   def create
-    @essay = current_user.essays.build(essay_params)
+    @essay              = Essay.new(essay_params)
+    @essay.uploaded_by  = current_user
 
     if @essay.save
       AuthorMatcher.resolve(@essay)
@@ -51,11 +63,11 @@ class EssaysController < ApplicationController
   private
 
   def set_essay
-    @essay = current_user.essays.find(params[:id])
+    @essay = Essay.find(params[:id])
   end
 
   def essay_params
-    params.require(:essay).permit(:title, :author_name, :view_mode, :original_file, :source_url)
+    params.require(:essay).permit(:title, :author_name, :original_file, :source_url)
   end
 
   def extract_text_now_then_enqueue_llm

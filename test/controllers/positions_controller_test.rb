@@ -2,8 +2,9 @@ require "test_helper"
 
 class PositionsControllerTest < ActionDispatch::IntegrationTest
   setup do
-    @user  = users(:one)
-    @essay = essays(:one)
+    @user     = users(:one)
+    @essay    = essays(:one)
+    @progress = essay_progresses(:one)
     sign_in @user
   end
 
@@ -13,7 +14,7 @@ class PositionsControllerTest < ActionDispatch::IntegrationTest
       headers: { "Content-Type" => "application/json" }
 
     assert_response :no_content
-    assert_in_delta 0.42, @essay.reload.last_read_position, 0.001
+    assert_in_delta 0.42, @progress.reload.last_read_position, 0.001
   end
 
   test "clamps position to 0..1" do
@@ -22,13 +23,9 @@ class PositionsControllerTest < ActionDispatch::IntegrationTest
       headers: { "Content-Type" => "application/json" }
 
     assert_response :no_content
-    assert_equal 1.0, @essay.reload.last_read_position
+    assert_equal 1.0, @progress.reload.last_read_position
   end
 
-  # The JS controller updates the progress bar immediately on every scroll
-  # event but only POSTs to the server every 2 s (throttled). This means
-  # rapid saves can arrive in quick succession — the endpoint must be
-  # idempotent and last-write-wins.
   test "successive saves overwrite with the latest value (last-write-wins)" do
     [0.1, 0.3, 0.55, 0.7].each do |pos|
       patch essay_position_path(@essay),
@@ -37,25 +34,34 @@ class PositionsControllerTest < ActionDispatch::IntegrationTest
       assert_response :no_content
     end
 
-    assert_in_delta 0.7, @essay.reload.last_read_position, 0.001
+    assert_in_delta 0.7, @progress.reload.last_read_position, 0.001
   end
 
-  test "saved position is reflected in reading_percent on essay" do
+  test "saved position is reflected in reading_percent on progress" do
     patch essay_position_path(@essay),
       params: { position: 0.63 }.to_json,
       headers: { "Content-Type" => "application/json" }
 
-    assert_equal 63, @essay.reload.reading_percent
+    assert_equal 63, @progress.reload.reading_percent
   end
 
   test "position 0 clears reading progress" do
-    @essay.update_column(:last_read_position, 0.8)
-
     patch essay_position_path(@essay),
       params: { position: 0.0 }.to_json,
       headers: { "Content-Type" => "application/json" }
 
-    assert_equal 0.0, @essay.reload.last_read_position
+    assert_equal 0.0, @progress.reload.last_read_position
+  end
+
+  test "creates progress record for a new essay (no prior reading)" do
+    new_essay = Essay.create!(title: "New Essay")
+    assert_difference "EssayProgress.count", 1 do
+      patch essay_position_path(new_essay),
+        params: { position: 0.5 }.to_json,
+        headers: { "Content-Type" => "application/json" }
+    end
+    assert_response :no_content
+    assert_in_delta 0.5, EssayProgress.last.last_read_position, 0.001
   end
 
   test "redirects to sign-in when not authenticated" do
@@ -67,14 +73,17 @@ class PositionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
-  test "returns 404 for an essay belonging to another user" do
+  test "any authenticated user can update position for any essay" do
     other_user  = User.create!(email: "other@example.com", password: "password123")
-    other_essay = other_user.essays.create!(title: "Other Essay", content: "<p>x</p>", word_count: 1)
+    sign_in other_user
 
-    patch essay_position_path(other_essay),
+    patch essay_position_path(@essay),
       params: { position: 0.5 }.to_json,
       headers: { "Content-Type" => "application/json" }
 
-    assert_response :not_found
+    assert_response :no_content
+    progress = EssayProgress.find_by(user: other_user, essay: @essay)
+    assert_not_nil progress
+    assert_in_delta 0.5, progress.last_read_position, 0.001
   end
 end

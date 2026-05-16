@@ -101,6 +101,28 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
+  # ── Search ───────────────────────────────────────────────────────────────────
+
+  test "GET search returns JSON with matching essays" do
+    get essays_search_path, params: { q: "Shortness" }, as: :json
+    assert_response :success
+    data = JSON.parse(response.body)
+    assert_kind_of Array, data
+    assert data.any? { |e| e["title"] =~ /Shortness/ }
+  end
+
+  test "GET search returns empty array for short query" do
+    get essays_search_path, params: { q: "S" }, as: :json
+    assert_response :success
+    assert_equal [], JSON.parse(response.body)
+  end
+
+  test "GET search requires authentication" do
+    sign_out @user
+    get essays_search_path, params: { q: "test" }, as: :json
+    assert_response :unauthorized
+  end
+
   # ── Upload / create flow ──────────────────────────────────────────────────
 
   test "POST create with PDF enqueues LlmFormatEssayJob" do

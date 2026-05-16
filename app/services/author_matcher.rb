@@ -11,7 +11,6 @@ class AuthorMatcher
 
   def initialize(essay)
     @essay = essay
-    @user  = essay.user
   end
 
   def resolve
@@ -20,18 +19,17 @@ class AuthorMatcher
     candidate_words = significant_words(normalise(@essay.author_name))
     return if candidate_words.empty?
 
-    existing = @user.authors.all
+    existing = Author.all.to_a
     matched  = existing.find { |a| fuzzy_match?(candidate_words, significant_words(normalise(a.name))) }
 
     if matched
       link(matched)
     else
-      author = @user.authors.create!(name: @essay.author_name.strip)
+      author = Author.create!(name: @essay.author_name.strip)
       link(author)
     end
   rescue ActiveRecord::RecordNotUnique
-    # Race condition — another thread created this author concurrently; retry find.
-    matched = @user.authors.find_by(name: @essay.author_name.strip)
+    matched = Author.find_by("lower(name) = ?", @essay.author_name.strip.downcase)
     link(matched) if matched
   end
 

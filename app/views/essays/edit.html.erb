@@ -30,14 +30,6 @@
             class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100" %>
       </div>
 
-      <div class="space-y-1.5">
-        <%= f.label :view_mode, "Default view mode", class: "block text-sm font-medium text-zinc-700 dark:text-zinc-300" %>
-        <%= f.select :view_mode,
-            Essay.view_modes.keys.map { |m| [m.capitalize, m] },
-            {},
-            class: "block w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100" %>
-      </div>
-
       <div class="flex gap-3 pt-2">
         <%= f.submit "Save changes",
             class: "flex-1 py-2.5 rounded-xl font-medium text-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-80 transition-opacity cursor-pointer" %>

@@ -1,9 +1,6 @@
 one:
-  user: one
   author: seneca
   author_name: "Seneca"
   title: "On the Shortness of Life"
   content: "<p class=\"prose-page\">It is not that we have a short time to live.</p>"
-  last_read_position: 0.25
-  view_mode: 0
   word_count: 4000

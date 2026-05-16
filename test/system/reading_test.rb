@@ -53,7 +53,7 @@ class ReadingTest < ApplicationSystemTestCase
   end
 
   test "progress bar updates immediately when page is scrolled" do
-    @essay.update!(content: LONG_CONTENT, word_count: 5000, last_read_position: 0)
+    @essay.update!(content: LONG_CONTENT, word_count: 5000)
     visit essay_path(@essay)
 
     assert_equal 0.0, progress_bar_width, "Progress bar should start at 0"
@@ -80,12 +80,14 @@ class ReadingTest < ApplicationSystemTestCase
     visit essays_path
     sleep 0.5  # let the keepalive fetch complete
 
-    assert @essay.reload.last_read_position > 0.1,
-      "Position should be saved when navigating away (got #{@essay.last_read_position})"
+    progress = EssayProgress.find_by(user: @user, essay: @essay)
+    assert progress&.last_read_position.to_f > 0.1,
+      "Position should be saved when navigating away"
   end
 
   test "saved scroll position is restored when returning to the essay" do
-    @essay.update!(content: LONG_CONTENT, word_count: 5000, last_read_position: 0.5)
+    @essay.update!(content: LONG_CONTENT, word_count: 5000)
+    EssayProgress.find_or_create_by!(user: @user, essay: @essay).update!(last_read_position: 0.5)
     visit essay_path(@essay)
 
     # _restore() retries via rAF until scrollHeight settles — give it a moment
@@ -112,7 +114,8 @@ class ReadingTest < ApplicationSystemTestCase
   # essay showed the cached (stale) reading percentage. no-store on the index
   # forces a fresh fetch so the updated position is always reflected.
   test "reading percentage on index card updates after navigating back from essay" do
-    @essay.update!(content: LONG_CONTENT, word_count: 5000, last_read_position: 0)
+    @essay.update!(content: LONG_CONTENT, word_count: 5000)
+    EssayProgress.where(user: @user, essay: @essay).delete_all
 
     visit essays_path
     assert_no_text "% read"

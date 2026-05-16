@@ -44,13 +44,10 @@ class RecommendationsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
-  test "POST create cannot create recommendation for another user's essay" do
-    essay2 = Essay.create!(
-      user:  User.create!(email: "other@example.com", password: "password123"),
-      title: "Other Essay"
-    )
-    post essay_recommendations_path(essay2), params: { kind: "author" }
-    assert_response :not_found
+  test "POST create works for any global essay (not user-scoped)" do
+    other_essay = Essay.create!(title: "Other Essay")
+    post essay_recommendations_path(other_essay), params: { kind: "author" }
+    assert_redirected_to recommendation_path(Recommendation.last)
   end
 
   # ── show ────────────────────────────────────────────────────────────────────
@@ -90,7 +87,7 @@ class RecommendationsControllerTest < ActionDispatch::IntegrationTest
 
   test "GET show cannot view another user's recommendation" do
     other_user  = User.create!(email: "stranger@example.com", password: "password123")
-    other_essay = Essay.create!(user: other_user, title: "Strangers Essay")
+    other_essay = Essay.create!(title: "Strangers Essay")
     other_rec   = Recommendation.create!(essay: other_essay, user: other_user, kind: "author", status: :pending)
 
     get recommendation_path(other_rec)

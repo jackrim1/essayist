@@ -44,14 +44,7 @@ class AuthorsTest < ApplicationSystemTestCase
 
   test "uploading essay with same author links to existing Author record" do
     AuthorMatcher.stubs(:resolve)
-    # Create another essay for existing author
-    other_essay = @user.essays.create!(
-      title:             "Letters from a Stoic",
-      author_name:       "Seneca",
-      author:            @author,
-      last_read_position: 0,
-      view_mode:         :infinite
-    )
+    Essay.create!(title: "Letters from a Stoic", author_name: "Seneca", author: @author)
 
     visit author_path(@author)
     assert_text "Letters from a Stoic"

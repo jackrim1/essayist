@@ -25,11 +25,11 @@ class AuthorsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
-  test "GET show cannot view another user's author" do
+  test "GET show is accessible for authors created by any user" do
     other_user   = User.create!(email: "stranger@example.com", password: "password123")
-    other_author = other_user.authors.create!(name: "Stranger Author")
+    other_author = Author.create!(name: "Another Author")
 
     get author_path(other_author)
-    assert_response :not_found
+    assert_response :success
   end
 end

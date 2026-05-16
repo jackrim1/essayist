@@ -1,7 +1,5 @@
 seneca:
-  user: one
   name: Seneca
 
 orwell:
-  user: one
   name: George Orwell

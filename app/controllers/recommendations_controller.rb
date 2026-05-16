@@ -25,7 +25,7 @@ class RecommendationsController < ApplicationController
   private
 
   def set_essay
-    @essay = current_user.essays.find(params[:essay_id])
+    @essay = Essay.find(params[:essay_id])
   end
 
   def set_recommendation

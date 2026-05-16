@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_16_120235) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_16_155612) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
   enable_extension "pgcrypto"
 
   create_table "active_storage_attachments", force: :cascade do |t|
@@ -47,9 +48,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_120235) do
     t.datetime "created_at", null: false
     t.string "name", null: false
     t.datetime "updated_at", null: false
+    t.index "lower((name)::text)", name: "index_authors_on_lower_name", unique: true
+  end
+
+  create_table "essay_progresses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "essay_id", null: false
+    t.decimal "last_read_position", precision: 10, scale: 8, default: "0.0", null: false
+    t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["user_id", "name"], name: "index_authors_on_user_id_and_name", unique: true
-    t.index ["user_id"], name: "index_authors_on_user_id"
+    t.integer "view_mode", default: 0, null: false
+    t.index ["user_id", "essay_id"], name: "index_essay_progresses_on_user_id_and_essay_id", unique: true
   end
 
   create_table "essays", force: :cascade do |t|
@@ -58,17 +67,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_120235) do
     t.text "content"
     t.bigint "content_simhash"
     t.datetime "created_at", null: false
-    t.decimal "last_read_position", precision: 10, scale: 8, default: "0.0"
     t.string "original_filename"
+    t.integer "published_year"
     t.string "source_url"
     t.string "title", null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.integer "view_mode", default: 0, null: false
+    t.bigint "uploaded_by_id"
     t.integer "word_count"
     t.index ["author_id"], name: "index_essays_on_author_id"
-    t.index ["user_id", "updated_at"], name: "index_essays_on_user_id_and_updated_at"
-    t.index ["user_id"], name: "index_essays_on_user_id"
+    t.index ["title"], name: "index_essays_on_title", opclass: :gin_trgm_ops, using: :gin
   end
 
   create_table "highlight_tags", force: :cascade do |t|
@@ -287,9 +294,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_120235) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
-  add_foreign_key "authors", "users"
+  add_foreign_key "essay_progresses", "essays"
+  add_foreign_key "essay_progresses", "users"
   add_foreign_key "essays", "authors"
-  add_foreign_key "essays", "users"
+  add_foreign_key "essays", "users", column: "uploaded_by_id"
   add_foreign_key "highlight_tags", "highlights"
   add_foreign_key "highlight_tags", "tags"
   add_foreign_key "highlights", "essays"

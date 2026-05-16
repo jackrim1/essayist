@@ -3,6 +3,8 @@ Rails.application.routes.draw do
 
   root "essays#index"
 
+  get "essays/search", to: "essays#search"
+
   resources :essays do
     resource  :position,  only: [:update], controller: "positions"
     resources :highlights, only: %i[create destroy]
