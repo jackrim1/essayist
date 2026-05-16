@@ -3,11 +3,16 @@ require "test_helper"
 class DuplicateDetectorTest < ActiveSupport::TestCase
   SAMPLE = "The quick brown fox jumps over the lazy dog. " * 10
 
-  test "simhash returns a 64-bit integer for normal content" do
-    hash = DuplicateDetector.simhash(SAMPLE)
-    assert_kind_of Integer, hash
-    assert hash >= 0
-    assert hash < 2**64
+  test "simhash returns a signed 64-bit integer (fits PostgreSQL bigint)" do
+    # Run many samples so we're likely to hit hashes with bit 63 set (which
+    # would overflow an unsigned→bigint conversion — the 500 we saw in prod).
+    100.times do |i|
+      text = "word#{i} " * 25
+      hash = DuplicateDetector.simhash(text)
+      assert_kind_of Integer, hash
+      assert hash >= -(2**63), "simhash must be >= min signed bigint"
+      assert hash <   2**63,  "simhash must be < max signed bigint (got #{hash})"
+    end
   end
 
   test "simhash returns nil for blank content" do
@@ -53,6 +58,14 @@ class DuplicateDetectorTest < ActiveSupport::TestCase
 
   test "hamming_distance returns 64 for nil inputs" do
     assert_equal 64, DuplicateDetector.hamming_distance(nil, 12345)
+  end
+
+  test "hamming_distance handles negative (signed) hash values without error" do
+    # Signed values arise when bit 63 is set — must still give a valid 0..64 count.
+    neg = -(2**62)
+    pos = (2**62) - 1
+    dist = DuplicateDetector.hamming_distance(neg, pos)
+    assert_includes 0..64, dist
   end
 
   test "similar? returns true for identical hashes" do

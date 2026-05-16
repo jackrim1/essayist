@@ -25,12 +25,15 @@ module DuplicateDetector
 
     result = 0
     v.each_with_index { |sum, i| result |= (1 << i) if sum > 0 }
-    result
+    # PostgreSQL bigint is signed 64-bit; convert unsigned result to signed range.
+    result >= (1 << 63) ? result - (1 << 64) : result
   end
 
   def self.hamming_distance(a, b)
     return 64 if a.nil? || b.nil?
-    (a ^ b).to_s(2).count("1")
+    # Mask to unsigned 64-bit before counting so negative (signed) values work correctly.
+    xor = (a ^ b) & 0xFFFFFFFFFFFFFFFF
+    xor.to_s(2).count("1")
   end
 
   def self.similar?(a, b)
