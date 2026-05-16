@@ -14,9 +14,24 @@ class EssaysControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index displays essay title" do
+    get essays_path
+    assert_select "a", text: @essay.title
+  end
+
+  test "index displays author name linked to author page" do
+    get essays_path
+    assert_select "a[href='#{author_path(@essay.author)}']", text: @essay.author_name
+  end
+
   test "GET show returns 200" do
     get essay_path(@essay)
     assert_response :success
+  end
+
+  test "show displays author name linked to author page" do
+    get essay_path(@essay)
+    assert_select "a[href='#{author_path(@essay.author)}']", text: @essay.author_name
   end
 
   # Regression: overflow-x-hidden on <body> combined with h-full disables

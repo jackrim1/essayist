@@ -1,18 +1,15 @@
 <% show_author = local_assigns.fetch(:show_author, true) %>
 <li id="<%= dom_id(essay) %>"
-    class="relative group flex items-center justify-between px-3 py-3.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+    class="group flex items-center justify-between px-3 py-3.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
 
-  <%# Stretched link — covers the whole card %>
-  <%= link_to essay_path(essay), class: "absolute inset-0 rounded-lg", aria: { label: essay.title.presence || "Untitled" } %>
-
-  <div class="flex-1 min-w-0 relative">
-    <p class="font-medium truncate"><%= essay.title.presence || "Untitled" %></p>
+  <div class="flex-1 min-w-0">
+    <%= link_to essay.title.presence || "Untitled", essay_path(essay),
+        class: "font-medium truncate block hover:text-zinc-600 dark:hover:text-zinc-300" %>
     <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
       <% if show_author && essay.author_name.present? %>
         <% if essay.author_id? %>
-          <%# Relative z-index lifts this above the stretched link %>
           <%= link_to essay.author_name, author_path(essay.author_id),
-              class: "relative z-10 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline underline-offset-2" %>
+              class: "hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline underline-offset-2" %>
         <% else %>
           <span><%= essay.author_name %></span>
         <% end %>
