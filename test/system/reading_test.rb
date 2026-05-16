@@ -108,6 +108,33 @@ class ReadingTest < ApplicationSystemTestCase
       "window.scrollY must be non-zero after scrolling — overflow on body/html blocks this on iOS"
   end
 
+  # Regression: Turbo caches the index on first visit. Navigating back from an
+  # essay showed the cached (stale) reading percentage. no-store on the index
+  # forces a fresh fetch so the updated position is always reflected.
+  test "reading percentage on index card updates after navigating back from essay" do
+    @essay.update!(content: LONG_CONTENT, word_count: 5000, last_read_position: 0)
+
+    visit essays_path
+    assert_no_text "% read"
+
+    visit essay_path(@essay)
+    page.execute_script("window.scrollTo(0, document.documentElement.scrollHeight * 0.6)")
+    sleep 0.3  # let scroll event fire and _updateUI run
+
+    # Trigger an immediate server save without waiting for the 2s throttle.
+    # The scroll controller listens to document visibilitychange and calls
+    # _persistCurrent() — same path the real browser uses when switching tabs.
+    page.execute_script("document.dispatchEvent(new Event('visibilitychange'))")
+    sleep 0.5  # let the keepalive PATCH complete before we navigate
+
+    # Navigate back — index fetches fresh because of no-store
+    find("a[href='#{essays_path}']").click
+    sleep 0.3
+
+    # Reading percentage should now be visible on the essay card
+    assert_text "% read"
+  end
+
   private
 
   def progress_bar_width
