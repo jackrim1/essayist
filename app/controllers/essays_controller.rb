@@ -2,7 +2,9 @@ class EssaysController < ApplicationController
   before_action :set_essay, only: %i[show edit update destroy]
 
   def index
-    @essays = current_user.essays.recent
+    @essays            = current_user.essays.recent
+    @highlight_counts  = current_user.highlights.group(:essay_id).count
+    @recent_highlights = current_user.highlights.recent(10).includes(:essay)
   end
 
   def show

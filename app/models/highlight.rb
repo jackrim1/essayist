@@ -10,4 +10,5 @@ class Highlight < ApplicationRecord
   validates :color,   inclusion: { in: COLORS }
 
   scope :for_essay, ->(essay) { where(essay: essay).order(:created_at) }
+  scope :recent,    ->(n = 10) { order(created_at: :desc).limit(n) }
 end

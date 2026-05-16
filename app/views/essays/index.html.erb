@@ -6,7 +6,7 @@
 <div class="min-h-screen flex flex-col">
   <!-- Top bar -->
   <header class="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
-    <div class="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
       <span class="font-semibold tracking-tight">Essayist</span>
       <div class="flex items-center gap-3">
         <!-- Dark mode toggle -->
@@ -28,18 +28,45 @@
     </div>
   </header>
 
-  <main class="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
-    <% if @essays.empty? %>
-      <div class="text-center py-24 text-zinc-400">
-        <p class="text-sm">No essays yet.</p>
-        <%= link_to "Upload your first essay", new_essay_path, class: "mt-2 text-sm underline underline-offset-2" %>
-      </div>
-    <% else %>
-      <ul class="space-y-px">
-        <% @essays.each do |essay| %>
-          <%= render "essay", essay: essay %>
+  <main class="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+    <div class="flex flex-col lg:flex-row gap-8 items-start">
+      <!-- Essay list -->
+      <div class="flex-1 min-w-0">
+        <% if @essays.empty? %>
+          <div class="text-center py-24 text-zinc-400">
+            <p class="text-sm">No essays yet.</p>
+            <%= link_to "Upload your first essay", new_essay_path, class: "mt-2 text-sm underline underline-offset-2" %>
+          </div>
+        <% else %>
+          <ul class="space-y-px">
+            <% @essays.each do |essay| %>
+              <%= render "essay", essay: essay, highlight_count: (@highlight_counts[essay.id] || 0) %>
+            <% end %>
+          </ul>
         <% end %>
-      </ul>
-    <% end %>
+      </div>
+
+      <!-- Highlights panel -->
+      <% if @recent_highlights.any? %>
+        <aside id="highlights-panel" class="w-full lg:w-64 shrink-0">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">Highlights</h2>
+          <ul class="space-y-3">
+            <% @recent_highlights.each do |highlight| %>
+              <li class="highlight-item">
+                <%= link_to essay_path(highlight.essay, highlight: highlight.id),
+                    class: "block rounded-lg p-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors" do %>
+                  <p class="text-sm text-zinc-800 dark:text-zinc-200 leading-snug line-clamp-2">
+                    <%= truncate(highlight.content, length: 50) %>
+                  </p>
+                  <p class="mt-1 text-xs italic text-zinc-400 dark:text-zinc-500 truncate">
+                    <%= highlight.essay.title.presence || "Untitled" %><% if highlight.essay.author_name.present? %> · <%= highlight.essay.author_name %><% end %>
+                  </p>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </aside>
+      <% end %>
+    </div>
   </main>
 </div>

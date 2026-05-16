@@ -36,6 +36,11 @@ class HighlightsController < ApplicationController
   end
 
   def highlight_params
-    params.require(:highlight).permit(:content, :color, :note, anchor: {})
+    permitted = params.require(:highlight).permit(:content, :color, :note)
+    raw_anchor = params.dig(:highlight, :anchor)
+    anchor = raw_anchor.is_a?(String) ? JSON.parse(raw_anchor) : {}
+    permitted.merge(anchor: anchor)
+  rescue JSON::ParserError
+    permitted.merge(anchor: {})
   end
 end

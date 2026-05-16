@@ -27,6 +27,7 @@ export default class extends Controller {
     // Re-apply all marks cleanly (handles Turbo cache restoration too)
     this._clearHighlightMarks()
     this._applyAllHighlights()
+    this._scrollToHighlightFromUrl()
   }
 
   disconnect() {
@@ -83,6 +84,15 @@ export default class extends Controller {
   }
 
   // ── Private: mark application ─────────────────────────────────────────────
+
+  _scrollToHighlightFromUrl() {
+    const id = new URLSearchParams(window.location.search).get("highlight")
+    if (!id) return
+    requestAnimationFrame(() => {
+      const mark = this.element.querySelector(`mark[data-hl-id="${id}"]`)
+      if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" })
+    })
+  }
 
   _applyAllHighlights() {
     if (!this.hasHighlightsValue) return

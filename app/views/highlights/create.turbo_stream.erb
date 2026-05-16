@@ -2,3 +2,8 @@
 <%= turbo_stream.prepend "highlights-list",
     partial: "highlights/highlight",
     locals:  { highlight: @highlight } %>
+<%# Sync the in-memory highlights list on the Stimulus controller so
+    highlightsValueChanged re-applies all marks cleanly after any future update. %>
+<turbo-stream action="updateHighlightsData" target="reader-content">
+  <template><%= @essay.highlights.for_essay(@essay).map { |h| { id: h.id, color: h.color, anchor: h.anchor } }.to_json %></template>
+</turbo-stream>
